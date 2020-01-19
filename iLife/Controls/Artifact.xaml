@@ -1,0 +1,37 @@
+﻿<UserControl x:Class="iLife.Controls.Artifact"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:controls="clr-namespace:iLife.Controls"
+             mc:Ignorable="d" 
+             SnapsToDevicePixels="True"
+             BorderBrush="Aqua" BorderThickness="2"
+             Padding="10"
+             Margin="10"
+             MaxWidth="300"
+             Background="Transparent"
+             d:DataContext="{Binding Source=Self}">
+    <Grid>
+        <FlowDocumentScrollViewer Padding="0" Margin="0" MinZoom="1" x:Name="Document" IsToolBarVisible="False"
+                                  HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
+            <FlowDocument x:Name="FlowDocument" PagePadding="0">
+                <Paragraph>
+                    <Floater HorizontalAlignment="Left" Padding="0" Margin="5">
+                        <Paragraph>
+                            <Image Height="64" Width="64" VerticalAlignment="Top" HorizontalAlignment="Left" />
+                        </Paragraph>
+                    </Floater>
+                    This is an example update with some extra text to test the zooming feature.
+                </Paragraph>
+                <Paragraph TextAlignment="Center">
+                    <Floater HorizontalAlignment="Center" Padding="0" Margin="5" BaselineAlignment="Bottom">
+                        <Paragraph>
+                            <Run Text="{Binding Category, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type controls:Artifact}}}" />
+                        </Paragraph>
+                    </Floater>
+                </Paragraph>
+            </FlowDocument>
+        </FlowDocumentScrollViewer>
+    </Grid>
+</UserControl>

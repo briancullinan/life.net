@@ -1,0 +1,12 @@
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\iLife\fsAudit\obj\Debug\fsAudit.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\iLife\fsAudit\obj\Debug\fsAudit.Properties.Resources.resources
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\iLife\fsAudit\obj\Debug\fsAudit.csproj.GenerateResource.Cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\iLife\bin\Debug\Plugins\fsAudit.dll.config
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\iLife\bin\Debug\Plugins\fsAudit.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\iLife\bin\Debug\Plugins\fsAudit.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\iLife\fsAudit\obj\Debug\fsAudit.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\iLife\fsAudit\obj\Debug\fsAudit.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\iLife\fsAudit\obj\Debug\Settings.baml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\iLife\fsAudit\obj\Debug\Settings.g.cs
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\iLife\fsAudit\obj\Debug\fsAudit_MarkupCompile.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\iLife\fsAudit\obj\Debug\fsAudit.g.resources

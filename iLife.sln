@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "iLife", "iLife\iLife.csproj", "{03D15720-BA17-40E8-8474-67C1A78A7C1E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "fsAudit", "fsAudit\fsAudit.csproj", "{98A30586-15AA-4041-A767-CEEF3A4B4EAE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "log4net.vs2010", "log4net\log4net.vs2010.csproj", "{181FE707-E161-4722-9F38-6AAAB6FAA106}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{03D15720-BA17-40E8-8474-67C1A78A7C1E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{03D15720-BA17-40E8-8474-67C1A78A7C1E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{03D15720-BA17-40E8-8474-67C1A78A7C1E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{03D15720-BA17-40E8-8474-67C1A78A7C1E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{98A30586-15AA-4041-A767-CEEF3A4B4EAE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98A30586-15AA-4041-A767-CEEF3A4B4EAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98A30586-15AA-4041-A767-CEEF3A4B4EAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98A30586-15AA-4041-A767-CEEF3A4B4EAE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{181FE707-E161-4722-9F38-6AAAB6FAA106}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{181FE707-E161-4722-9F38-6AAAB6FAA106}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{181FE707-E161-4722-9F38-6AAAB6FAA106}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{181FE707-E161-4722-9F38-6AAAB6FAA106}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
