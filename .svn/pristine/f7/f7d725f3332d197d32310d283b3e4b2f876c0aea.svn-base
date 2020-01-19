@@ -1,0 +1,222 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Web;
+using Life;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Firefox;
+using OpenQA.Selenium.Support.UI;
+using log4net;
+using Activity = Life.Utilities.Activity;
+using Trigger = Life.Utilities.Trigger;
+
+namespace Research.Activities
+{
+    public partial class Classify : Activity, IDisposable
+    {
+        private static readonly ILog Log = LogManager.GetLogger(typeof(Classify));
+
+        private static readonly Dictionary<string, FirefoxDriver> Profiles = new Dictionary<string, FirefoxDriver>();
+        private readonly string _profile;
+        private readonly string[] _properties;
+        private FirefoxDriver _driver;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="activity"></param>
+        /// <param name="profile"></param>
+        /// <param name="properties">The properties to search for on the event object.
+        ///   This is soley responsible for controlling interactions between objects.</param>
+        public Classify(Life.Activity activity, string profile = "", params string[] properties) : base(activity)
+        {
+            _profile = profile;
+            _properties = properties;
+        }
+
+        public override void Execute(object context, ActivityQueue queue, Trigger trigger)
+        {
+            try
+            {
+                if (!Profiles.ContainsKey(_profile))
+                    Profiles[_profile] = _driver = new FirefoxDriver(new FirefoxProfile(_profile));
+                _driver = Profiles[_profile];
+            }
+            catch (Exception ex)
+            {
+                Log.Error("An exception occured while initializing.", ex);
+            }
+
+            context = context ?? new object();
+            // only run 1 search at time per profile
+            lock (Profiles[_profile])
+            {
+                var searchString = context.GetType()
+                                          .GetProperties()
+                                          .Where(x => _properties.Contains(x.Name))
+                                          .Select(x => x.GetValue(context).ToString())
+                                          .FirstOrDefault()
+                                   ?? context.ToString();
+
+                // do a google search
+                string properSpelling;
+                var results = GoogleSearch(searchString, out properSpelling);
+
+                results = results.OrderBy(x => Utilities.LevenshteinDistance(x.Text, searchString)).ToList();
+
+                // if there are no exact matches, split it up between every two and 3 words
+                var words = context.ToString().Split(' ');
+                var i = 2;
+                while (i < words.Length - 1 && (!results.Any() ||
+                    Utilities.LevenshteinDistance(results.First().Text, searchString) > searchString.Length * .80))
+                {
+                    var search = words
+                        .Select((x, j) => new {Index = j, Value = x})
+                        .GroupBy(x => x.Index/i)
+                        .Select(x => x.Select(v => v.Value).ToList())
+                        .ToList();
+
+                    results = new List<Result>();
+                    // search for each group and find the most relevant match
+                    foreach (var text in search)
+                    {
+                        results = results
+                            .Union(GoogleSearch(string.Join(" ", text), out properSpelling))
+                            .DistinctBy(x => x.Link).ToList();
+                    }
+
+                    i++;
+                }
+
+                // classify the results
+            }
+        }
+
+        private bool GoToAndWaitForElement(string address, string id)
+        {
+            _driver.Navigate().GoToUrl(address);
+
+            var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(2));
+
+            var elem = wait.Until(x => x.FindElement(By.Id(id)));
+
+            // if safety was hit, there isn't much else we can do
+            if (elem == null || elem.Location == Point.Empty)
+            {
+                Log.Debug(string.Format("Could not retreive results, element never appeared: {0} {1}", address, id));
+                return false;
+            }
+            return true;
+        }
+
+        private class Result
+        {
+            public string Link { get; set; }
+            public string Text { get; set; }
+            public string Html { get; set; }
+        }
+
+        private List<Result> GoogleSearch(string search, out string properSpelling)
+        {
+            // try to find the search text in the database
+            var address = "https://www.google.com/search?q=" + HttpUtility.UrlEncode(search) + "&ie=utf-8&oe=utf-8";
+            Research result = null;
+            try
+            {
+                using (var data = new DatalayerDataContext())
+                {
+                    if ((result = data.Researches.FirstOrDefault(x => x.Address == address)) != null)
+                    {
+                        var escaped = result.FullHtml
+                            .Replace("\\", "\\\\")
+                            .Replace("\'", "\\'")
+                            .Replace("\n", "\\n")
+                            .Replace("\r", "\\r");
+                        _driver.ExecuteScript(string.Format("document.write('{0}'); return true;", escaped));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("There was an error loading the search results from the database.", ex);
+            }
+
+            properSpelling = search;
+            if (result == null)
+            {
+                GoToAndWaitForElement(address, "resultStats");
+            }
+
+            // get a list of all the results
+            var links = _driver.FindElementsByClassName("r")
+                .Select(x => x.FindElement(By.TagName("a")))
+                .Select(x => new Result
+                    {
+                        Html = x.GetAttribute("outerHTML"),
+                        Link = x.GetAttribute("href"),
+                        Text = x.Text
+                    }).ToList();
+            var results = string.Join(
+                Environment.NewLine,
+                links
+                    .Select(x => x.Text + " - " + x.Link)
+                    .ToList());
+            Console.WriteLine(results);
+
+            // save the page for later searching
+            try
+            {
+                using (var data = new DatalayerDataContext())
+                {
+                    var html = _driver.ExecuteScript("return document.documentElement.outerHTML;").ToString();
+                    var linkHtml = string.Join(
+                        Environment.NewLine,
+                        links.Select(x => x.Html));
+                    var newPage = new Research
+                        {
+                            Address = _driver.Url,
+                            FullHtml = html,
+                            Title = _driver.Title,
+                            InterestingHtml = linkHtml,
+                            TextOnly = search
+                        };
+                    data.Researches.InsertOnSubmit(newPage);
+
+                    data.SubmitChanges();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("There was an error saving the researched page.", ex);
+            }
+
+            // check for spelling errors, we know we are done when the list doesn't get any bigger
+            var alternateSpellings = _driver
+                .FindElementsByCssSelector(".spell, .spell_orig")
+                .Where(x => x.TagName == "a")
+                .Select(x => new Result
+                    {
+                        Html = x.GetAttribute("outerHTML"),
+                        Link = x.GetAttribute("href"),
+                        Text = x.Text
+                    })
+                .ToList();
+            if (alternateSpellings.Any())
+            {
+                foreach (var link in alternateSpellings)
+                {
+                    var union = GoogleSearch(link.Text, out properSpelling);
+                    links = links.Union(union).DistinctBy(x => x.Link).ToList();
+                }
+            }
+
+            return links;
+        }
+
+        public void Dispose()
+        {
+            Profiles[_profile].Quit();
+        }
+    }
+}

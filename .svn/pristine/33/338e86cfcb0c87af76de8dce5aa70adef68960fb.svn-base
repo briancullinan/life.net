@@ -1,0 +1,342 @@
+﻿<Window x:Class="Life.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:timeline="clr-namespace:TimelineLibrary;assembly=TimelineLibrary"
+        xmlns:ad="http://avalondock.codeplex.com"
+        xmlns:controls="clr-namespace:Life.Controls"
+        Title="MainWindow" Height="600" Width="800"
+        DataContext="{Binding RelativeSource={RelativeSource Self}}">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ToolBarTray>
+            <ToolBar>
+                <ScrollViewer Style="{StaticResource HorizontalScroller}" HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Horizontal" x:Name="Tabs">
+                        <StackPanel.Resources>
+                            <Style TargetType="{x:Type RadioButton}" BasedOn="{StaticResource {x:Type ToggleButton}}">
+                                <Setter Property="Margin" Value="5" />
+                                <Setter Property="VerticalAlignment" Value="Center" />
+                            </Style>
+                        </StackPanel.Resources>
+                        <RadioButton GroupName="Display" Content="Live" />
+                    </StackPanel>
+                </ScrollViewer>
+            </ToolBar>
+            <ToolBar>
+                <TextBox x:Name="SearchText" Text="Search" Margin="5" MinWidth="150" />
+                <Button x:Name="Search" Content="Search" Margin="5" IsDefault="True" Click="Search_Click" />
+                <RadioButton GroupName="Display" x:Name="Settings" Margin="5" Content="Settings"
+                             HorizontalAlignment="Right" Style="{StaticResource {x:Type ToggleButton}}" />
+                <RadioButton GroupName="Display" x:Name="Activity" Margin="5" Content="Activity"
+                             HorizontalAlignment="Right" Style="{StaticResource {x:Type ToggleButton}}" />
+                <RadioButton GroupName="Display" x:Name="Graphs" Margin="5" Content="Graphs"
+                             HorizontalAlignment="Right" Style="{StaticResource {x:Type ToggleButton}}" />
+            </ToolBar>
+        </ToolBarTray>
+
+        <ad:DockingManager x:Name="dockManager" Grid.Row="1" Theme="{Binding AvalonDockTheme}">
+            <ad:LayoutRoot>
+                <ad:LayoutPanel Orientation="Horizontal">
+                    <ad:LayoutDocumentPaneGroup>
+                        <ad:LayoutDocumentPane>
+                            <ad:LayoutDocument Title="Live">
+                                <timeline:TimelineTray x:Name="Timeline" Panel.ZIndex="1" Grid.Row="1"
+                                                       Grid.ColumnSpan="2"
+                                                       CalendarType="gregorian"
+                                                       MinDateTime="01/01/1970"
+                                                       MaxDateTime="01/01/9999"
+                                                       CurrentDateTime="Now">
+                                    <timeline:TimelineTray.ColumnDefinitions>
+                                        <ColumnDefinition Width="88*" />
+                                        <ColumnDefinition Width="305*" />
+                                    </timeline:TimelineTray.ColumnDefinitions>
+
+                                    <!--<timeline:TimelineTray.Style>
+                <Style TargetType="{x:Type timeline:TimelineTray}" BasedOn="{StaticResource {x:Type timeline:TimelineTray}}">
+                    <Setter Property="Background" Value="{x:Static SystemColors.WindowBrush}"></Setter>
+                </Style>
+            </timeline:TimelineTray.Style>-->
+
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="40" />
+                                        <RowDefinition Height="40" />
+                                        <RowDefinition Height="40" />
+                                        <RowDefinition Height="40" />
+                                        <RowDefinition Height="40" />
+                                        <RowDefinition Height="40" />
+                                    </Grid.RowDefinitions>
+
+                                    <timeline:TimelineBand
+                                        Grid.Row="0"
+                                        IsMainBand="True"
+                                        ItemSourceType="seconds"
+                                        HorizontalAlignment="Stretch"
+                                        TimelineWindowSize="15" Grid.ColumnSpan="2" />
+
+                                    <timeline:TimelineBand
+                                        Grid.Row="1"
+                                        IsMainBand="False"
+                                        ItemSourceType="minutes"
+                                        HorizontalAlignment="Stretch"
+                                        TimelineWindowSize="20"
+                                        MaxEventHeight="4" Grid.ColumnSpan="2" />
+
+                                    <timeline:TimelineBand
+                                        Grid.Row="2"
+                                        IsMainBand="False"
+                                        ItemSourceType="hours"
+                                        HorizontalAlignment="Stretch"
+                                        TimelineWindowSize="10"
+                                        MaxEventHeight="4" Grid.ColumnSpan="2" />
+
+                                    <timeline:TimelineBand
+                                        Grid.Row="3"
+                                        IsMainBand="False"
+                                        ItemSourceType="days"
+                                        HorizontalAlignment="Stretch"
+                                        TimelineWindowSize="20"
+                                        MaxEventHeight="4" Grid.ColumnSpan="2" />
+
+                                    <timeline:TimelineBand
+                                        Grid.Row="4"
+                                        IsMainBand="False"
+                                        ItemSourceType="months"
+                                        HorizontalAlignment="Stretch"
+                                        TimelineWindowSize="10"
+                                        MaxEventHeight="4" Grid.ColumnSpan="2" />
+
+                                    <timeline:TimelineBand
+                                        Grid.Row="5"
+                                        IsMainBand="False"
+                                        ItemSourceType="years"
+                                        HorizontalAlignment="Stretch"
+                                        TimelineWindowSize="10"
+                                        MaxEventHeight="4" Grid.ColumnSpan="2" />
+
+                                    <timeline:TimelineBand
+                                        Grid.Row="6"
+                                        IsMainBand="False"
+                                        ItemSourceType="decades"
+                                        HorizontalAlignment="Stretch"
+                                        TimelineWindowSize="10"
+                                        MaxEventHeight="4" Grid.ColumnSpan="2" />
+
+                                </timeline:TimelineTray>
+                            </ad:LayoutDocument>
+                            <ad:LayoutDocument Title="Settings">
+                                <Frame Grid.ColumnSpan="2" Grid.Row="1" Panel.ZIndex="2" Grid.RowSpan="2"
+                                       Background="White"
+                                       NavigationUIVisibility="Hidden" Source="/Controls/Settings.xaml">
+                                </Frame>
+                            </ad:LayoutDocument>
+                            <ad:LayoutDocument Title="Activity">
+                                <Frame Grid.ColumnSpan="2" Grid.Row="1" Panel.ZIndex="2" Grid.RowSpan="2"
+                                       Background="White"
+                                       NavigationUIVisibility="Hidden" Source="/Controls/Activity.xaml">
+                                </Frame>
+                            </ad:LayoutDocument>
+                        </ad:LayoutDocumentPane>
+                        <ad:LayoutDocumentPane>
+
+                        </ad:LayoutDocumentPane>
+                    </ad:LayoutDocumentPaneGroup>
+                </ad:LayoutPanel>
+            </ad:LayoutRoot>
+        </ad:DockingManager>
+        <!--<zoom:ZoomControl Grid.Row="1" Zoom="1">
+            <ItemsControl Grid.Row="1" Focusable="false" ItemsSource="{Binding Items}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <lib:AnimatingTilePanel Dampening=".2" Attraction="2" Variation="1" ItemHeight="100" ItemWidth="100" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </zoom:ZoomControl>-->
+        <!--<Grid Panel.ZIndex="1" Grid.Row="2" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition />
+                <RowDefinition />
+                <RowDefinition />
+            </Grid.RowDefinitions>
+            <Label Grid.Column="1" Content="Now" HorizontalAlignment="Center" />
+            <Label Grid.Row="1" Content="{Binding Path=Current}" ContentStringFormat="dd-MM-yyyy HH:mm:ss.ffff" HorizontalAlignment="Right" />
+            <Slider ToolTipService.ShowDuration="{x:Static system:Int32.MaxValue}" Grid.Column="1" Grid.Row="1" x:Name="Speed2" 
+                    Value="60" Minimum="0" Maximum="120" IsSnapToTickEnabled="True"
+                    Thumb.DragStarted="Speed2_DragStarted" Thumb.DragCompleted="Speed2_DragCompleted" 
+                    VerticalAlignment="Center" TickPlacement="TopLeft" SmallChange="0" LargeChange="0" >
+                <Slider.Template>
+                    <ControlTemplate TargetType="{x:Type Slider}">
+                        <Border x:Name="border" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto" MinHeight="{TemplateBinding MinHeight}"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TickBar x:Name="TopTick" Fill="{TemplateBinding Foreground}" Height="4" Margin="0,0,0,2" Placement="Top" Grid.Row="0" Visibility="Collapsed"/>
+                                <TickBar x:Name="BottomTick" Fill="{TemplateBinding Foreground}" Height="4" Margin="0,2,0,0" Placement="Bottom" Grid.Row="2" Visibility="Collapsed"/>
+                                <Border x:Name="TrackBackground" BorderBrush="#FFD6D6D6" BorderThickness="1" Background="#FFE7EAEA" Height="4" Margin="5,0" Grid.Row="1" VerticalAlignment="Center">
+                                    <Canvas Margin="-6,-1">
+                                        <Rectangle x:Name="PART_SelectionRange" Fill="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" Height="4" Visibility="Hidden"/>
+                                    </Canvas>
+                                </Border>
+                                <Track x:Name="PART_Track" Grid.Row="1">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="Slider.DecreaseLarge">
+                                            <RepeatButton.Style>
+                                                <Style TargetType="{x:Type RepeatButton}">
+                                                    <Setter Property="OverridesDefaultStyle" Value="True"/>
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="Focusable" Value="False"/>
+                                                    <Setter Property="IsTabStop" Value="False"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="{x:Type RepeatButton}">
+                                                                <Rectangle Fill="{TemplateBinding Background}" Height="{TemplateBinding Height}" Width="{TemplateBinding Width}"/>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </RepeatButton.Style>
+                                        </RepeatButton>
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="Slider.IncreaseLarge">
+                                            <RepeatButton.Style>
+                                                <Style TargetType="{x:Type RepeatButton}">
+                                                    <Setter Property="OverridesDefaultStyle" Value="True"/>
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="Focusable" Value="False"/>
+                                                    <Setter Property="IsTabStop" Value="False"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="{x:Type RepeatButton}">
+                                                                <Rectangle Fill="{TemplateBinding Background}" Height="{TemplateBinding Height}" Width="{TemplateBinding Width}"/>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </RepeatButton.Style>
+                                        </RepeatButton>
+                                    </Track.IncreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb x:Name="Thumb" Focusable="False" Height="18" OverridesDefaultStyle="True" VerticalAlignment="Center" Width="11">
+                                            <Thumb.Template>
+                                                <ControlTemplate TargetType="{x:Type Thumb}">
+                                                    <Grid HorizontalAlignment="Center" UseLayoutRounding="True" VerticalAlignment="Center">
+                                                        <Path x:Name="grip" Data="M0,0C0,0 11,0 11,0 11,0 11,18 11,18 11,18 0,18 0,18 0,18 0,0 0,0z" Fill="#FFF0F0F0" Stretch="Fill" SnapsToDevicePixels="True" Stroke="#FFACACAC" StrokeThickness="1" UseLayoutRounding="True" VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Fill" TargetName="grip" Value="#FFDCECFC"/>
+                                                            <Setter Property="Stroke" TargetName="grip" Value="#FF7EB4EA"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsDragging" Value="True">
+                                                            <Setter Property="Fill" TargetName="grip" Value="#FFDAECFC"/>
+                                                            <Setter Property="Stroke" TargetName="grip" Value="#FF569DE5"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsEnabled" Value="False">
+                                                            <Setter Property="Fill" TargetName="grip" Value="#FFF0F0F0"/>
+                                                            <Setter Property="Stroke" TargetName="grip" Value="#FFD9D9D9"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Thumb.Template>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                </Track>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="TickPlacement" Value="TopLeft">
+                                <Setter Property="Visibility" TargetName="TopTick" Value="Visible"/>
+                                <Setter Property="Template" TargetName="Thumb">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="{x:Type Thumb}">
+                                            <Grid HorizontalAlignment="Center" UseLayoutRounding="True" VerticalAlignment="Center">
+                                                <Path x:Name="grip" Data="M0,6C0,6 5.5,0 5.5,0 5.5,0 11,6 11,6 11,6 11,18 11,18 11,18 0,18 0,18 0,18 0,6 0,6z" Fill="#FFF0F0F0" Stretch="Fill" SnapsToDevicePixels="True" Stroke="#FFACACAC" StrokeThickness="1" UseLayoutRounding="True" VerticalAlignment="Center"/>
+                                            </Grid>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Fill" TargetName="grip" Value="#FFDCECFC"/>
+                                                    <Setter Property="Stroke" TargetName="grip" Value="#FF7EB4EA"/>
+                                                </Trigger>
+                                                <Trigger Property="IsDragging" Value="True">
+                                                    <Setter Property="Fill" TargetName="grip" Value="#FFDAECFC"/>
+                                                    <Setter Property="Stroke" TargetName="grip" Value="#FF569DE5"/>
+                                                </Trigger>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Fill" TargetName="grip" Value="#FFF0F0F0"/>
+                                                    <Setter Property="Stroke" TargetName="grip" Value="#FFD9D9D9"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Margin" TargetName="TrackBackground" Value="5,2,5,0"/>
+                            </Trigger>
+                            <Trigger Property="TickPlacement" Value="BottomRight">
+                                <Setter Property="Visibility" TargetName="BottomTick" Value="Visible"/>
+                                <Setter Property="Template" TargetName="Thumb">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="{x:Type Thumb}">
+                                            <Grid HorizontalAlignment="Center" UseLayoutRounding="True" VerticalAlignment="Center">
+                                                <Path x:Name="grip" Data="M0,12C0,12 5.5,18 5.5,18 5.5,18 11,12 11,12 11,12 11,0 11,0 11,0 0,0 0,0 0,0 0,12 0,12z" Fill="#FFF0F0F0" Stretch="Fill" SnapsToDevicePixels="True" Stroke="#FFACACAC" StrokeThickness="1" UseLayoutRounding="True" VerticalAlignment="Center"/>
+                                            </Grid>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Fill" TargetName="grip" Value="#FFDCECFC"/>
+                                                    <Setter Property="Stroke" TargetName="grip" Value="#FF7EB4EA"/>
+                                                </Trigger>
+                                                <Trigger Property="IsDragging" Value="True">
+                                                    <Setter Property="Fill" TargetName="grip" Value="#FFDAECFC"/>
+                                                    <Setter Property="Stroke" TargetName="grip" Value="#FF569DE5"/>
+                                                </Trigger>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Fill" TargetName="grip" Value="#FFF0F0F0"/>
+                                                    <Setter Property="Stroke" TargetName="grip" Value="#FFD9D9D9"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Margin" TargetName="TrackBackground" Value="5,0,5,2"/>
+                            </Trigger>
+                            <Trigger Property="TickPlacement" Value="Both">
+                                <Setter Property="Visibility" TargetName="TopTick" Value="Visible"/>
+                                <Setter Property="Visibility" TargetName="BottomTick" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsSelectionRangeEnabled" Value="True">
+                                <Setter Property="Visibility" TargetName="PART_SelectionRange" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter Property="Foreground" TargetName="Thumb" Value="Blue"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Slider.Template>
+            </Slider>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Grid.ColumnSpan="2">
+                <TextBlock Text="Speed:" />
+                <TextBlock x:Name="Speed" />
+                <TextBlock Text="Factor:" />
+                <TextBlock x:Name="Factor" />
+            </StackPanel>
+        </Grid>-->
+    </Grid>
+</Window>

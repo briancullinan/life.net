@@ -1,0 +1,5 @@
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\QuickGraph4.5\bin\Debug\QuickGraph4.5.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\QuickGraph4.5\bin\Debug\QuickGraph4.5.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\QuickGraph4.5\obj\Debug\QuickGraph4.5.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\QuickGraph4.5\obj\Debug\QuickGraph4.5.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\QuickGraph4.5\obj\Debug\QuickGraph4.5.csprojResolveAssemblyReference.cache

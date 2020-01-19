@@ -1,0 +1,9 @@
+﻿/*update email set [from] = replacement from email inner join (select *,Replace(REPLACE([from], concat('" <', [value], '>"'), '"'), '""', '"') as replacement from (
+select *,substring([from], start + 1, patindex('%>%', [from]) - start - 1) As value from (
+Select Id,convert(varchar(1000), [From]) as [from],[Subject], PATINDEX('%<%', [from]) as start from email where [From] like '%<%>%'
+) as startindex where [from] like '%""%'
+and [from] not like '%"<%'
+and [from] not like '%>"'
+) as extractedemail) as replacements on email.Id = replacements.id
+*/
+Select Id,convert(varchar(1000), [From]) as [from],[Subject] as start from email where [From] not like '%<%>%'

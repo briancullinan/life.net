@@ -1,0 +1,127 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Timers;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
+using System.Windows.Shapes;
+using System.Windows.Threading;
+
+namespace Life
+{
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml
+    /// </summary>
+    public partial class MainWindow
+    {
+        private readonly Timer _scrollTimer;
+
+        public static readonly DependencyProperty CurrentProperty = DependencyProperty.Register(
+            "Current",
+            typeof (DateTime),
+            typeof (MainWindow),
+            new PropertyMetadata(default(DateTime)));
+
+        public DateTime Current
+        {
+            get { return (DateTime) GetValue(CurrentProperty); }
+            set
+            {
+                SetValue(CurrentProperty, value);
+                foreach (var plugin in App.Plugins)
+                {
+                    //plugin.GetItemsNear(value, ItemsLoaded);
+                }
+            }
+        }
+
+        public static readonly DependencyProperty ItemsProperty = DependencyProperty.Register(
+            "Items",
+            typeof(ObservableCollection<FrameworkElement>),
+            typeof(MainWindow),
+            new PropertyMetadata(new ObservableCollection<FrameworkElement>()));
+
+        public ObservableCollection<FrameworkElement> Items
+        {
+            get { return (ObservableCollection<FrameworkElement>) GetValue(ItemsProperty); }
+            set { SetValue(ItemsProperty, value); }
+        }
+
+        private void ItemsLoaded(IEnumerable<object> items)
+        {
+            Dispatcher.Invoke(() =>
+                {
+                    // add items to view while removing irrelevant items
+                    foreach (var item in items.Except(Items))
+                        Items.Add((FrameworkElement)item);
+                });
+        }
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            Items = new ObservableCollection<FrameworkElement>();
+            Current = DateTime.Now;
+            _scrollTimer = new Timer
+                {
+                    Interval = 100
+                };
+            _scrollTimer.Elapsed += ScrollTimerOnElapsed;
+        }
+
+        private void ScrollTimerOnElapsed(object sender, ElapsedEventArgs elapsedEventArgs)
+        {
+            var speeds = new[]
+                {
+                    100,
+                    1000 * 60 / 10,
+                    1000 * 60 * 60 / 10,
+                    1000 * 60 * 60 * 24 / 10,
+                    unchecked(1000 * 60 * 60 * 24 * 28 / 10),
+                    unchecked(1000 * 60 * 60 * 24 * 365 / 10),
+                    unchecked(1000 * 60 * 60 * 24 * 365)
+                };
+            Dispatcher.Invoke((Action) (() =>
+                {
+                    // divide the slider in to 10 segments where the left is subtractive and the right is addative
+                    var total = Speed2.Maximum;
+                    var half = Speed2.Value < Speed2.Maximum / 2 
+                        ? (Speed2.Maximum / 2) - Speed2.Value 
+                        : Speed2.Value - (Speed2.Maximum / 2);
+                    if (half.Equals(0)) return;
+                    var speed = half%(total/12)/(total/12);
+                    var factor = (short) Math.Floor((half - 1)/(total/12));
+                    var increment = speed.Equals(0)
+                                        ? 1*(speeds[factor + 1] - speeds[factor]) + speeds[factor]
+                                        : speed*(speeds[factor + 1] - speeds[factor]) + speeds[factor];
+                    if (Speed2.Value < total/2)
+                        increment *= -1;
+                    Speed.Text = speed.ToString(CultureInfo.InvariantCulture);
+                    Factor.Text = factor.ToString(CultureInfo.InvariantCulture);
+                    Current = Current.AddMilliseconds(increment);
+                }));
+        }
+
+        private void Speed2_DragStarted(object sender, DragStartedEventArgs e)
+        {
+            _scrollTimer.Start();
+        }
+
+        private void Speed2_DragCompleted(object sender, DragCompletedEventArgs e)
+        {
+            _scrollTimer.Stop();
+            Speed2.Value = (Speed2.Maximum + Speed2.Minimum) / 2;
+        }
+    }
+}

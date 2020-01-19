@@ -1,0 +1,415 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data.Linq.SqlClient;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Web;
+using System.Xml;
+using System.Xml.Linq;
+using System.Xml.Schema;
+using Life;
+using Life.Utilities.Extensions;
+using log4net;
+using Activity = Life.Utilities.Activity;
+using Trigger = Life.Utilities.Trigger;
+
+namespace Messages.Activities
+{
+    class SynchronizeTrillian : Activity
+    {
+        private static DateTime _epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        private static readonly ILog Log = LogManager.GetLogger(typeof(SynchronizeTrillian));
+        private readonly string _logs;
+
+        public SynchronizeTrillian(Life.Activity activity, string logs) : base(activity)
+        {
+            _logs = logs;
+        }
+
+        public override void Execute(object context, ActivityQueue queue, Trigger trigger)
+        {
+            if (!Directory.Exists(_logs))
+                return;
+
+            var media = Directory.GetDirectories(_logs);
+            foreach (var mediumFile in media)
+            {
+                if ((Path.GetFileName(mediumFile) ?? "").StartsWith("_") ||
+                    (Path.GetFileName(mediumFile) ?? "").StartsWith("."))
+                    continue;
+
+                var files = Directory.EnumerateFiles(mediumFile, "*.*", SearchOption.AllDirectories)
+                                     .Where(x => x.EndsWith(".xml") || x.EndsWith(".log"))
+                                     .DistinctBy(Path.GetFileNameWithoutExtension)
+                                     .ToList();
+
+                // read each files content
+                foreach (var file in files)
+                {
+                    // create a dictionary of time and text
+                    var messages = new Dictionary<double, Tuple<string, string, string>>();
+                    List<Tuple<DateTime, DateTime>> sessions = null;
+
+                    // always prefer the data read from xml as it is more precise, but some of the old files don't support this
+                    var xmlFile = Path.Combine(Path.GetDirectoryName(file) ?? "",
+                                               Path.GetFileNameWithoutExtension(file) + ".xml");
+                    if (File.Exists(xmlFile))
+                    {
+                        messages = LoadXml(xmlFile, out sessions);
+                    }
+
+                    var logFile = Path.Combine(Path.GetDirectoryName(file) ?? "",
+                                               Path.GetFileNameWithoutExtension(file) + ".log");
+                    if(File.Exists(logFile))
+                    {
+                        List<Tuple<DateTime, DateTime>> logSessions;
+                        messages = LoadLog(logFile, out logSessions, messages);
+                        sessions = sessions != null ? sessions.Union(logSessions).ToList() : logSessions;
+                    }
+
+                    // add messages to database
+                    var from = Path.GetFileNameWithoutExtension(file);
+                    var medium = Path.GetFileName(mediumFile);
+                    using (var data = new DatalayerDataContext())
+                    {
+                        foreach (var message in messages)
+                        {
+                            var msgId = new DateTime(Convert.ToInt64(message.Key*TimeSpan.TicksPerMillisecond));
+                            if (data.TrillianMessages
+                                    .Any(x => x.Id == msgId && x.Medium == medium && x.From == from)) continue;
+
+                            var msg = new TrillianMessage
+                                {
+                                    Id = msgId,
+                                    Medium = medium,
+                                    From = from,
+                                    To = message.Value.Item2 ?? "",
+                                    Message = message.Value.Item3
+                                };
+                            data.TrillianMessages.InsertOnSubmit(msg);
+                        }
+
+                        try
+                        {
+                            data.SubmitChanges();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(string.Format("There was an error saving the chat log: {0} {1}", xmlFile, logFile), ex);
+                        }
+
+                        if(sessions != null)
+                            foreach (var session in sessions)
+                            {
+                                if (
+                                    data.TrillianSessions.Any(
+                                        x => x.From == from && x.Start == session.Item1 && x.Stop == session.Item2))
+                                    continue;
+
+                                var ses = new TrillianSession
+                                    {
+                                        From = from,
+                                        Start = session.Item1,
+                                        Stop = session.Item2
+                                    };
+                                data.TrillianSessions.InsertOnSubmit(ses);
+                            }
+
+                        try
+                        {
+                            data.SubmitChanges();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(string.Format("There was an error saving the chat sessions: {0} {1}", xmlFile, logFile), ex);
+                        }
+
+                    }
+                }
+            }
+        }
+
+        private static Dictionary<double, Tuple<string, string, string>> LoadLog(
+            string logFile,
+            out List<Tuple<DateTime, DateTime>> sessions,
+            Dictionary<double, Tuple<string, string, string>> xmlMsg = null)
+        {
+            var messages = xmlMsg ?? new Dictionary<double, Tuple<string, string, string>>();
+            sessions = new List<Tuple<DateTime, DateTime>>();
+
+            using (var stream = new FileStream(
+                logFile,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite))
+            {
+                using (var file = new StreamReader(stream))
+                {
+                    string line;
+                    var msgList = new List<Tuple<string, string, string>>();
+                    DateTime? start = null;
+                    double startDbl = 0;
+                    while ((line = file.ReadLine()) != null)
+                    {
+                        if (string.IsNullOrEmpty(line.Trim()))
+                            continue;
+
+                        var match = Regex.Match(line, @"session start \(.*\):\s*(?<date>.*)", RegexOptions.IgnoreCase);
+                        if (match.Success)
+                        {
+                            // Fri Apr 09 00:04:54 2010 -0700
+                            DateTime tmp;
+                            if (!DateTime.TryParseExact(
+                                match.Groups["date"].Value.TrimEnd('0'),
+                                new[] { "ddd MMM dd HH:mm:ss yyyy zz", "ddd MMM dd HH:mm:ss yyyy" },
+                                CultureInfo.InvariantCulture,
+                                DateTimeStyles.AssumeLocal | DateTimeStyles.AdjustToUniversal,
+                                out tmp))
+                                throw new NotImplementedException();
+
+                            start = tmp;
+                            startDbl = Math.Round(Convert.ToDouble(start.Value.Ticks / TimeSpan.TicksPerMillisecond) / 10) * 10;
+                        }
+
+                        else if (
+                            (match =
+                             Regex.Match(line, @"session close \(.*\):\s*(?<date>.*)", RegexOptions.IgnoreCase))
+                                .Success)
+                        {
+                            DateTime end;
+                            if (!DateTime.TryParseExact(
+                                match.Groups["date"].Value.TrimEnd('0'),
+                                new[] { "ddd MMM dd HH:mm:ss yyyy zz", "ddd MMM dd HH:mm:ss yyyy" },
+                                CultureInfo.InvariantCulture,
+                                DateTimeStyles.AssumeLocal | DateTimeStyles.AdjustToUniversal,
+                                out end))
+                                throw new NotImplementedException();
+
+                            var endDbl = Math.Round(Convert.ToDouble(end.Ticks/TimeSpan.TicksPerMillisecond)/10)*10;
+
+                            if (start == null)
+                                throw new NotImplementedException();
+
+                            // record session
+                            sessions.Add(new Tuple<DateTime, DateTime>(start.Value, end));
+
+                            // organize messages
+                            if (xmlMsg != null)
+                            {
+                                var range = xmlMsg.Where(x => x.Key <= endDbl && x.Key >= startDbl)
+                                                  .ToDictionary(x => x.Key, x => x.Value);
+                                var last = Math.Round(Convert.ToDouble(start.Value.Ticks / TimeSpan.TicksPerMillisecond) / 10) * 10;
+                                var differences = new List<Tuple<string, string, string>>();
+
+                                // merge messages with input from xml
+                                foreach (var msg in msgList)
+                                {
+                                    KeyValuePair<double, Tuple<string, string, string>> item;
+                                    if ((item = range.FirstOrDefault(x => x.Value.Item3 == msg.Item3)).Value == null)
+                                    {
+                                        differences.Add(msg);
+                                    }
+                                    else
+                                    {
+                                        // space the messages evenly over the last known date and the current known date
+                                        var increment = Math.Max((item.Key - last) / (differences.Count + 1), 10);
+                                        var safety = increment;
+                                        while (--safety > 0 &&
+                                            Enumerable.Range(0, differences.Count)
+                                                      .Any(
+                                                          i =>
+                                                          messages.ContainsKey(last + (i + 1)*increment)))
+                                            increment+=10;
+                                        for (var i = 0; i < differences.Count; i++)
+                                            messages.Add(last + (i + 1)*increment, differences[i]);
+                                        last = item.Key;
+
+                                        // remove it from the list in case the text of the message is exactly the same it will continue linearly.
+                                        range.Remove(item.Key);
+                                        differences.Clear();
+                                    }
+                                }
+
+                                // if there are any messages remaining use the end date to space them
+                                {
+                                    var increment = Math.Max((endDbl - last)/(differences.Count + 1), 10);
+                                    var safety = increment;
+                                    while (--safety > 0 &&
+                                        Enumerable.Range(0, differences.Count)
+                                                  .Any(
+                                                      i =>
+                                                      messages.ContainsKey(last + (i + 1) * increment)))
+                                        increment+=10;
+                                    for (var i = 0; i < differences.Count; i++)
+                                        messages.Add(last + (i + 1) * increment, differences[i]);
+                                }
+
+                                msgList.Clear();
+                            }
+                            else
+                            {
+                                // since there are no times, space the messages evenly over the session
+                                var increment = Math.Max((endDbl - startDbl) / (msgList.Count + 1), 10);
+                                var safety = increment;
+                                while (--safety > 0 &&
+                                    Enumerable.Range(0, msgList.Count)
+                                              .Any(
+                                                  i =>
+                                                  messages.ContainsKey(startDbl + (i + 1) * increment)))
+                                    increment+=10;
+                                for (var i = 0; i < msgList.Count; i++)
+                                    messages.Add(startDbl + (i + 1) * increment, msgList[i]);
+                            }
+
+                            start = null;
+                        }
+
+                        else if (start == null)
+                        {
+                            Log.Debug(line);
+                            throw new NotImplementedException();
+                        }
+
+                        else
+                        {
+                            var msg = Regex.Match(line, "^(?<from>.*?):(?<msg>.*)$");
+                            msgList.Add(new Tuple<string, string, string>(msg.Groups["from"].Value.Trim(), "",
+                                                                          msg.Groups["msg"].Value.Trim()));
+                        }
+                    }
+                }
+            }
+
+            return messages;
+        }
+
+        private static Dictionary<double, Tuple<string, string, string>> LoadXml(string xmlFile, out List<Tuple<DateTime, DateTime>> sessions)
+        {
+            var messages = new Dictionary<double, Tuple<string, string, string>>();
+
+            var overlaps = new List<Tuple<string, string, string>>();
+
+            sessions = new List<Tuple<DateTime, DateTime>>();
+
+            // used below for recording sessions
+            DateTime? start = null;
+
+            using (var stream = new FileStream(
+                xmlFile,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite))
+            {
+                var nt = new NameTable();
+                var mgr = new XmlNamespaceManager(nt);
+                var pc = new XmlParserContext(nt, mgr, "", XmlSpace.Default);
+
+                var reader = XmlReader.Create(
+                    new SanitizedStream(stream),
+                    new XmlReaderSettings
+                        {
+                            ConformanceLevel = ConformanceLevel.Fragment,
+                            ValidationType = ValidationType.None,
+                            ValidationFlags = XmlSchemaValidationFlags.None,
+                            NameTable = nt,
+                            IgnoreWhitespace = true
+                        }, pc);
+                while (reader.Read())
+                {
+                    if (reader.NodeType != XmlNodeType.Element || (reader.LocalName != "message" && reader.LocalName != "session")) continue;
+
+                    try
+                    {
+                        using (var msgReader = reader.ReadSubtree())
+                        {
+                            msgReader.Read();
+                            var msgEl = XNode.ReadFrom(msgReader) as XElement;
+                            if (msgEl == null) continue;
+                            var time = _epoch.AddSeconds(int.Parse(msgEl.Attribute("time").Value));
+                            var timeDbl = Math.Round(Convert.ToDouble(time.Ticks / TimeSpan.TicksPerMillisecond) / 10) * 10;
+
+                            // record session elements and continue
+                            if (msgEl.Name.LocalName == "session")
+                            {
+                                switch (msgEl.AttributeValue("type"))
+                                {
+                                    case "start":
+                                        start = time;
+                                        break;
+                                    case "stop":
+                                        {
+                                            DateTime? stop = time;
+
+                                            if(start == null)
+                                                throw new NotImplementedException();
+
+                                            sessions.Add(new Tuple<DateTime, DateTime>(start.Value, stop.Value));
+                                        }
+                                        break;
+                                }
+
+                                continue;
+                            }
+
+                            // resolve overlaps, assumes messages are sequential
+                            if (!messages.ContainsKey(timeDbl) && overlaps.Any())
+                            {
+                                var increment = Math.Max((timeDbl - messages.Last().Key) / (overlaps.Count + 1), 10);
+                                    var safety = increment;
+                                    while (--safety > 0 &&
+                                        Enumerable.Range(0, overlaps.Count)
+                                                  .Any(
+                                                      i =>
+                                                      messages.ContainsKey(messages.Last().Key + (i + 1) * increment)))
+                                        increment += 10;
+                                    for (var i = 0; i < overlaps.Count; i++)
+                                        messages.Add(messages.Last().Key + (i + 1)*increment, overlaps[i]);
+                                    overlaps.Clear();
+                            }
+
+                            // if there are two messages at exactly the same time insert them later
+                            if (messages.ContainsKey(timeDbl))
+                                overlaps.Add(
+                                    new Tuple<string, string, string>(
+                                        msgEl.AttributeValue("from"),
+                                        msgEl.AttributeValue("to"),
+                                        (HttpUtility.UrlDecode(msgEl.AttributeValue("text")) ?? "").Trim()));
+                            else
+                            {
+                                messages.Add(timeDbl, new Tuple<string, string, string>(
+                                                       msgEl.AttributeValue("from"),
+                                                       msgEl.AttributeValue("to"),
+                                                       (HttpUtility.UrlDecode(msgEl.AttributeValue("text")) ?? "").Trim()));
+                            }
+                        }
+                    }
+                    catch
+                        (Exception ex)
+                    {
+                        Log.Warn("Error reading event.", ex);
+                    }
+                }
+            }
+
+            // empty any remaining overlaps
+            if (overlaps.Any())
+            {
+                var time = Math.Round(Convert.ToDouble(File.GetLastWriteTimeUtc(xmlFile).Ticks / TimeSpan.TicksPerMillisecond) / 10) * 10;
+                var increment = Math.Max((time - messages.Last().Key)/(overlaps.Count + 1), 10);
+                var safety = increment;
+                while (--safety > 0 &&
+                       Enumerable.Range(0, overlaps.Count)
+                                 .Any(
+                                     i =>
+                                     messages.ContainsKey(messages.Last().Key + (i + 1)*increment)))
+                    increment += 10;
+                for (var i = 0; i < overlaps.Count; i++)
+                    messages.Add(messages.Last().Key + (i + 1)*increment, overlaps[i]);
+            }
+
+            return messages;
+        }
+    }
+}

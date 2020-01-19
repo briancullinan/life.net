@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ordesignerObjectsDiagram dslVersion="1.0.0.0" absoluteBounds="0, 0, 14.5, 8.5" name="Datalayer">
+  <DataContextMoniker Name="/DatalayerDataContext" />
+  <nestedChildShapes>
+    <classShape Id="92cd0e8a-7e5b-480c-884a-a90b32c6cab7" absoluteBounds="0.75, 2.875, 2, 2.5401025390625005">
+      <DataClassMoniker Name="/DatalayerDataContext/FacebookPlace" />
+      <nestedChildShapes>
+        <elementListCompartment Id="caf90e0b-ae15-46d0-88e3-ce450253bba0" absoluteBounds="0.765, 3.335, 1.9700000000000002, 1.9801025390625" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="c5e9dd1c-69c1-4dfe-8a0b-f9091d9bd8cb" absoluteBounds="6.25, 3, 2, 2.3478011067708331">
+      <DataClassMoniker Name="/DatalayerDataContext/FacebookAlbum" />
+      <nestedChildShapes>
+        <elementListCompartment Id="fda74798-4c87-4ea4-82da-4ee002099579" absoluteBounds="6.265, 3.46, 1.9700000000000002, 1.7878011067708335" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="92eb8b25-a6f8-435e-8b32-983d04b65c4c" absoluteBounds="3.5, 3, 2, 2.1554996744791666">
+      <DataClassMoniker Name="/DatalayerDataContext/FacebookContact" />
+      <nestedChildShapes>
+        <elementListCompartment Id="d03672c8-f48f-4fa3-a14f-a49157226106" absoluteBounds="3.515, 3.46, 1.9700000000000002, 1.5954996744791665" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="2a51f24b-cbbf-43d2-8187-2ae41eda29dc" absoluteBounds="9.25, 3, 2, 2.3478011067708331">
+      <DataClassMoniker Name="/DatalayerDataContext/FacebookEvent" />
+      <nestedChildShapes>
+        <elementListCompartment Id="f0cd3ad1-d7dc-4ae8-911f-7bb94306046a" absoluteBounds="9.265, 3.46, 1.9700000000000002, 1.7878011067708335" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(5.5 : 4.07774983723958); (6.25 : 4.07774983723958)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/DatalayerDataContext/FacebookContact/FacebookContact_FacebookAlbum" />
+      <nodes>
+        <classShapeMoniker Id="92eb8b25-a6f8-435e-8b32-983d04b65c4c" />
+        <classShapeMoniker Id="c5e9dd1c-69c1-4dfe-8a0b-f9091d9bd8cb" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(2.75 : 4.07774983723958); (3.5 : 4.07774983723958)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/DatalayerDataContext/FacebookPlace/FacebookPlace_FacebookContact" />
+      <nodes>
+        <classShapeMoniker Id="92cd0e8a-7e5b-480c-884a-a90b32c6cab7" />
+        <classShapeMoniker Id="92eb8b25-a6f8-435e-8b32-983d04b65c4c" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(5.5 : 5.15549967447917); (5.875 : 5.53049967447917); (5.875 : 5.72280110677083); (8.875 : 5.72280110677083); (9.25 : 5.34780110677083)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/DatalayerDataContext/FacebookContact/FacebookContact_FacebookEvent" />
+      <nodes>
+        <classShapeMoniker Id="92eb8b25-a6f8-435e-8b32-983d04b65c4c" />
+        <classShapeMoniker Id="2a51f24b-cbbf-43d2-8187-2ae41eda29dc" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(2.75 : 5.4151025390625); (3.125 : 5.7901025390625); (3.125 : 5.59780110677083); (8.41666666666666 : 5.59780110677083 : JumpStart); (8.58333333333333 : 5.59780110677083 : JumpEnd); (9 : 5.59780110677083); (9.25 : 5.34780110677083)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/DatalayerDataContext/FacebookPlace/FacebookPlace_FacebookEvent" />
+      <nodes>
+        <classShapeMoniker Id="92cd0e8a-7e5b-480c-884a-a90b32c6cab7" />
+        <classShapeMoniker Id="2a51f24b-cbbf-43d2-8187-2ae41eda29dc" />
+      </nodes>
+    </associationConnector>
+    <classShape Id="ab688a77-183c-457c-b404-15b58b1ccfe4" absoluteBounds="12.25, 2.625, 2, 2.9247054036458331">
+      <DataClassMoniker Name="/DatalayerDataContext/FacebookPhoto" />
+      <nestedChildShapes>
+        <elementListCompartment Id="524d15d9-9586-4302-979a-e8e837363e2c" absoluteBounds="12.265, 3.085, 1.9700000000000002, 2.364705403645833" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(12.25 : 2.625); (8.25 : 2.625); (8.25 : 3)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/DatalayerDataContext/FacebookPhoto/FacebookPhoto_FacebookAlbum" />
+      <nodes>
+        <classShapeMoniker Id="ab688a77-183c-457c-b404-15b58b1ccfe4" />
+        <classShapeMoniker Id="c5e9dd1c-69c1-4dfe-8a0b-f9091d9bd8cb" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(8.25 : 5.34780110677083); (8.625 : 5.72280110677083); (8.625 : 5.92470540364583); (11.875 : 5.92470540364583); (12.25 : 5.54970540364583)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/DatalayerDataContext/FacebookAlbum/FacebookAlbum_FacebookPhoto" />
+      <nodes>
+        <classShapeMoniker Id="c5e9dd1c-69c1-4dfe-8a0b-f9091d9bd8cb" />
+        <classShapeMoniker Id="ab688a77-183c-457c-b404-15b58b1ccfe4" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(4.4687475 : 5.15549967447917); (4.4687475 : 5.44875075520833); (5.70991774739583 : 5.44875075520833 : JumpStart); (5.8765844140625 : 5.44875075520833 : JumpEnd); (8.26761631510417 : 5.44875075520833 : JumpStart); (8.43428298177083 : 5.44875075520833 : JumpEnd); (9.06571701822916 : 5.44875075520833 : JumpStart); (9.23238368489583 : 5.44875075520833 : JumpEnd); (12.25 : 5.44875075520833)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/DatalayerDataContext/FacebookContact/FacebookContact_FacebookPhoto" />
+      <nodes>
+        <classShapeMoniker Id="92eb8b25-a6f8-435e-8b32-983d04b65c4c" />
+        <classShapeMoniker Id="ab688a77-183c-457c-b404-15b58b1ccfe4" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(2.75 : 2.90625); (8.16666666666667 : 2.90625 : JumpStart); (8.33333333333333 : 2.90625 : JumpEnd); (12.25 : 2.90625)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/DatalayerDataContext/FacebookPlace/FacebookPlace_FacebookPhoto" />
+      <nodes>
+        <classShapeMoniker Id="92cd0e8a-7e5b-480c-884a-a90b32c6cab7" />
+        <classShapeMoniker Id="ab688a77-183c-457c-b404-15b58b1ccfe4" />
+      </nodes>
+    </associationConnector>
+  </nestedChildShapes>
+</ordesignerObjectsDiagram>

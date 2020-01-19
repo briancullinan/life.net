@@ -1,0 +1,16 @@
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Common\_build\bin\Debug\PixelLab.Common.dll
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Common\_build\bin\Debug\PixelLab.Common.pdb
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Common\_build\bin\Debug\PixelLab.Core.dll
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Common\_build\bin\Debug\PixelLab.Core.pdb
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Common\_build\obj\Debug\PixelLab.Common.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Common\_build\obj\Debug\PixelLab.Common.dll
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Common\_build\obj\Debug\PixelLab.Common.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Common\_build\obj\Debug\PixelLab.Common.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Common\_build\obj\Debug\PixelLab.Common.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Common\_build\obj\Debug\PixelLab.Common.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Common\_build\bin\Debug\PixelLab.Common.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Common\_build\bin\Debug\PixelLab.Common.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Common\_build\bin\Debug\PixelLab.Core.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Common\_build\bin\Debug\PixelLab.Core.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Common\_build\bin\Debug\CodeContracts\PixelLab.Common.noReferenceAssembly
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Common\_build\obj\Debug\PixelLab.Common.rewritten

@@ -1,0 +1,51 @@
+﻿using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Windows;
+using Life.Annotations;
+using TimelineLibrary;
+
+namespace Life
+{
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml
+    /// </summary>
+    public partial class MainWindow : INotifyPropertyChanged
+    {
+        private ObservableCollection<TimelineEvent> _items;
+
+        public ObservableCollection<TimelineEvent> Items
+        {
+            get { return _items; }
+            private set
+            {
+                _items = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            Items = new ObservableCollection<TimelineEvent>();
+            Items.CollectionChanged += (sender, args) => Timeline.ResetEvents(Items.ToList());
+        }
+
+        private void Settings_Click(object sender, RoutedEventArgs e)
+        {
+            MainFrame.Navigate(new Uri("/Controls/Settings.xaml", UriKind.Relative));
+            MainFrame.Visibility = Visibility.Visible;
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvocator]
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            var handler = PropertyChanged;
+            if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+}

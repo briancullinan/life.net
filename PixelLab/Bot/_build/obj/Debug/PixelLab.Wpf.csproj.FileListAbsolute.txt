@@ -1,0 +1,57 @@
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\PixelLab.Wpf.dll
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\PixelLab.Wpf.pdb
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\Microsoft.Expression.Interactions.dll
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\Microsoft.Practices.Prism.dll
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\Microsoft.Practices.Prism.Interactivity.dll
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\Microsoft.Practices.ServiceLocation.dll
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\PixelLab.Common.dll
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\PixelLab.Core.dll
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\System.Windows.Interactivity.dll
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\PixelLab.Common.pdb
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\PixelLab.Core.pdb
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\Microsoft.Practices.Prism.xml
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\Microsoft.Practices.Prism.Interactivity.xml
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\Microsoft.Practices.ServiceLocation.pdb
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\bin\Debug\Microsoft.Practices.ServiceLocation.xml
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\PixelLab.Wpf.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\Themes\generic.baml
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\TreeMap3DUserControl.g.cs
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\GeneratedInternalTypeHelper.g.cs
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\PixelLab.Wpf_MarkupCompile.cache
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\PixelLab.Wpf_MarkupCompile.lref
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\Themes\Luna.NormalColor.baml
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\Themes\ColorPicker.generic.baml
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\Themes\NumericUpDown.generic.baml
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\Themes\TemplateBorder.generic.baml
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\Themes\OrgTree.generic.baml
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\TreeMap3DUserControl.baml
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\Themes\InfoTextBox.generic.baml
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\Themes\Zap.Generic.baml
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\PixelLab.Wpf.g.resources
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\PixelLab.Wpf.dll
+C:\Users\bjcullinan\Downloads\bot-master\bot-master\net40-client\Bot\_build\obj\Debug\PixelLab.Wpf.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\PixelLab.Wpf.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\Themes\generic.baml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\TreeMap3DUserControl.g.cs
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\GeneratedInternalTypeHelper.g.cs
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\PixelLab.Wpf_MarkupCompile.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\PixelLab.Wpf_MarkupCompile.lref
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\PixelLab.Wpf.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\PixelLab.Wpf.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\bin\Debug\PixelLab.Wpf.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\bin\Debug\PixelLab.Wpf.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\bin\Debug\PixelLab.Common.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\bin\Debug\PixelLab.Core.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\bin\Debug\PixelLab.Common.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\bin\Debug\PixelLab.Core.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\Themes\Luna.NormalColor.baml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\Themes\ColorPicker.generic.baml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\Themes\NumericUpDown.generic.baml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\Themes\TemplateBorder.generic.baml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\Themes\OrgTree.generic.baml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\TreeMap3DUserControl.baml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\Themes\InfoTextBox.generic.baml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\Themes\Zap.Generic.baml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\PixelLab.Wpf.g.resources
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\bin\Debug\CodeContracts\PixelLab.Wpf.noReferenceAssembly
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\PixelLab\Bot\_build\obj\Debug\PixelLab.Wpf.rewritten

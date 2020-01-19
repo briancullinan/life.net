@@ -1,0 +1,245 @@
+﻿var shadow_direction = 135;
+var inside = true;
+var $rows = [];
+var $addItems = 1;
+var $speed = 300; // add items to by flown in asynchronously
+var $block_size = 40; // including borders and margin and padding
+var $middle = 0;
+var $rate = 0;
+var $rate_counter = 0;
+var $time = Date();
+var $edge = 0; // specified where items should start shifting
+var $other_edge; // specifies when to drop items
+var $left_relative = 0;
+var $right_relative = 0;
+var $shifter_semaphore = 0; // make sure we don't shift before the previous shift is complete, this would cause blocks to queue more animations that is needed
+var $flyer_semaphore = [0, 0, 0, 0, 0];
+var $flyer_semaphore_i = 0;
+var $flying_rate = [0, 0, 0, 0, 0];
+
+var time_interval = setInterval(updateDate, 1000);
+function updateDate()
+{
+	var $time = Date();
+	$('#time').html($time);
+}
+
+var creator = null;
+var shifter = null;
+function queueItems() {
+
+	// generate new items
+	for (var i = 0; i < $addItems; i++) {
+		// get the span of the new block
+		var block_h = Math.floor(Math.random() * 4) + 1;
+		var block_w = Math.floor(Math.random() * 4) + 1;
+		var R = Math.floor(Math.random() * 255);
+		var G = Math.floor(Math.random() * 255);
+		var B = Math.floor(Math.random() * 255);
+
+		// place the clones in the grid
+		$('<div class="file clone" />')
+		.css({
+			height: block_h * $block_size,
+			width: block_w * $block_size
+		})
+		.data('color', 'rgb(' + R + ',' + G + ',' + B + ')')
+		.appendTo('#streamer');
+	};
+}
+
+function shiftFiles() {
+
+	var status = '';
+	for (var i = 0; i < 5; i++) {
+		status += $flyer_semaphore[i] + ';<br />';
+	}
+	$('#status').html(status);
+
+	// don't fly in created elements until they are finished being added
+	if ($shifter_semaphore > 0 ||
+		$flyer_semaphore[$flyer_semaphore_i] > 0) {
+		setTimeout(shiftFiles, 1);
+		return;
+	}
+
+	// start the animate for all the new blocks
+	$flyer_semaphore[$flyer_semaphore_i] = $('.file.clone')
+	.each(function (index, item) {
+		var block_h = Math.floor($(this).height() / $block_size);
+		var block_w = Math.floor($(this).width() / $block_size);
+
+		// get smallest fitting row
+		var min_row;
+		var min_row_i;
+		for (var i = 0; i <= $rows.length - block_h; i++) {
+			var max_fit = Math.max.apply(Math, $rows.slice(i, i + block_h));
+			if (typeof min_row == 'undefined' || max_fit < min_row) {
+				min_row = max_fit;
+				min_row_i = i;
+			}
+		}
+
+		// add the new block size to the rows array 
+		//   so we don't have to recalculate for every block
+		for (var i = min_row_i; i < min_row_i + block_h; i++)
+			$rows[i] = min_row + block_w * $block_size;
+
+		// create element to flyin
+		$('<div class="file flying">')
+		.css({
+			top: $middle,
+			left: $right_relative,
+			height: '2px',
+			width: '2px',
+			'background-color': $(this).data('color')
+		})
+		.data('sem_i', $flyer_semaphore_i)
+		.appendTo('#streamer')
+		.animate({
+			opacity: 1,
+			left: min_row,
+			top: min_row_i * $block_size,
+			height: block_h * $block_size,
+			width: block_w * $block_size
+		}, 500, 'easeOutExpo', function () {
+			$(this).removeClass('flying').addClass('shift')
+			$flyer_semaphore[$(this).data('sem_i')]--;
+		});
+	}).remove().length;
+
+	// flyout when it gets to the edge
+	$('.file.shift').each(function () { 
+		if ($(this).position().left + $(this).width() < $other_edge) {
+			$(this).removeClass('shift').addClass('flyout');
+		}
+	});
+
+	// flyout items
+	$('.file.flyout').animate({
+		opacity: 0,
+		height: 2,
+		width: 2,
+		left: -$left_relative,
+		top: $middle
+	}, 500, 'easeOutExpo', function () {
+		$(this).remove();
+	});
+
+
+	// determine rate based on all newly added blocks
+	var max_change = Math.min.apply(Math, $rows) - $edge + ($rate * $rate_counter);
+	if (max_change > 0) {
+		// set the rate
+		var new_rate = 5;
+		$rate_counter = 0;
+
+		// if we adjust the rate we must also adjust the ones mid flight
+		//for (var j = 0; j < 4; j++) {
+		//	for (var i = 0; i < $rows.length; i++) {
+		//		$rows[i] -= (new_rate - $rate);
+		//	}
+		//}
+
+		$rate = new_rate;
+	}
+	else $rate = 5;
+
+
+	// begin shifting at the determined rate
+	$shifter_semaphore = $('.file.shift').animate({
+		left: '-=' + $rate
+	}, 100, 'linear', function () {
+		$shifter_semaphore--;
+	}).length;
+
+	// decrement rate from rows because next time this function is called
+	//  the block will be in their new position
+	for (var i = 0; i < $rows.length; i++) {
+		$rows[i] -= $rate;
+	}
+
+	$flyer_semaphore_i = ++$flyer_semaphore_i % 5;
+}
+
+function setupFiles() {
+
+	// initialize streamer
+	$other_edge = $('#streamer').offset().left + $block_size * 4;
+	$edge = $('#streamer').width() - $other_edge;
+	for (var i = 0; i < Math.floor($('#streamer').height() / $block_size); i++)
+		$rows[i] = $edge;
+	$middle = $('#streamer').height() / 2;
+	$left_relative = $('#streamer').offset().left;
+	$right_relative = $(window).width() - $('#streamer').offset().left;
+	creator = setInterval(queueItems, $speed);
+	shifter = setInterval(shiftFiles, 100);
+}
+
+function destroyFiles() {
+	clearInterval(creator);
+	clearInterval(shifter);
+	$('#files').animate({
+		left: $(window).width() / 2,
+		width: 2,
+		height: 2,
+		opacity: 0
+	}, 1000, 'linear', function () {
+		$(this).remove();
+	});
+}
+
+function setupSettings() {
+	$('#settings').css({
+		left: $('#settingsBtn').offset().left,
+		top: $('#settingsBtn').offset().top,
+		height: $('#settingsBtn').height(),
+		width: $('#settingsBtn').width(),
+		opacity: 0
+	}).animate({
+		left: 0,
+		top: $('#afterHeading').offset().top,
+		width: $(window).width(),
+		height: $(window).height() - $('#afterHeading').offset().top,
+		opacity: 1
+	}, 1000, 'linear', function () {
+		
+	});
+}
+
+$(document).ready(function () {
+	// rotate the heading shadow
+	setInterval("$('.heading').css('-ms-filter', 'progid:DXImageTransform.Microsoft.Shadow(color=#aaaaaa,direction=' + (--shadow_direction) + ',strength=4)')", 100);
+	$(document).mousemove();
+
+	// fade top right corner buttons in on mouse hover
+	$(document).mousemove(function (e) {
+		// get the minimum distance to edges
+		var offset = $('#windowButtons').offset();
+		min_x = Math.min(e.pageX - offset.left, (offset.left + $('#windowButtons').outerWidth()) - e.pageX);
+		min_y = Math.min(e.pageY - offset.top, (offset.top + $('#windowButtons').outerHeight()) - e.pageY);
+		var min = Math.min(min_x, min_y);
+
+		// normalize to 10 pixel range and convert to opacity
+		if (min_x <= 0 || min_y <= 0) {
+			if (inside) {
+				$('#windowButtons').fadeTo('fast', 0.50);
+				$('#windowButtons > span').fadeTo('fast', 0.50);
+			}
+			inside = false;
+		}
+		else {
+			if (!inside)
+				$('#windowButtons').fadeTo('fast', 1);
+			inside = true;
+		}
+	});
+
+	// fade in buttons
+	$('#windowButtons > span').hover(function () {
+		$(this).fadeTo('fast', 1);
+	}, function () {
+		$(this).fadeTo('fast', 0.50);
+	});
+
+});

@@ -1,0 +1,21 @@
+﻿using System.Collections.Generic;
+using System.Linq;
+
+namespace Life.Utilities
+{
+    public abstract class Activity
+    {
+        private readonly Life.Activity _activity;
+        protected Activity(Life.Activity activity)
+        {
+            _activity = activity;
+        }
+
+        public Life.Activity Entity
+        {
+            get { return _activity; }
+        }
+
+        public abstract void Execute(dynamic context);
+    }
+}

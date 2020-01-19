@@ -1,0 +1,457 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters;
+using System.Runtime.Serialization.Formatters.Soap;
+using System.Text;
+using System.Threading;
+using System.Windows.Threading;
+using Life.Utilities;
+using log4net;
+using log4net.Config;
+
+namespace Life
+{
+    /// <summary>
+    /// Interaction logic for App.xaml
+    /// </summary>
+    public partial class App
+    {
+        #region "Fields"
+        private static readonly ILog Log = LogManager.GetLogger(typeof(App));
+        private static ObservableCollection<Utilities.Trigger> _triggers;
+        private static ObservableCollection<Assembly> _plugins;
+        private static ObservableCollection<Utilities.Activity> _activities;
+        //private static readonly PerformanceCounter CpuCounter;
+        //private static readonly PerformanceCounter RamCounter;
+        //private static ManualResetEvent _loading = new ManualResetEvent(true);
+        private static readonly object QueueLock = new object();
+        private static DatalayerDataContext _appContext;
+        private static readonly Dictionary<Type, RunOptions> OptionsCache;
+        private static DatalayerDataContext _queueContext;
+        internal static readonly DateTime Start;
+
+        public delegate void ActivityHandler(Utilities.Activity activity);
+        public static event ActivityHandler ActivityCompleted;
+
+        public static DatalayerDataContext AppContext
+        {
+            get { return _appContext ?? (_appContext = new DatalayerDataContext()); }
+        }
+
+        private static DatalayerDataContext QueuingContext
+        {
+            get { return _queueContext ?? (_queueContext = new DatalayerDataContext()); }
+        }
+
+        #endregion
+
+        #region "Properties"
+        public static ObservableCollection<Assembly> Plugins
+        {
+            get
+            {
+                if (_plugins == null)
+                    Load_Plugins();
+                return _plugins;
+            }
+        }
+
+        public static ObservableCollection<Utilities.Activity> Activities
+        {
+            get
+            {
+                if (_activities == null)
+                    Load_Activities();
+                return _activities;
+            }
+        }
+
+        public static ObservableCollection<Utilities.Trigger> Triggers
+        {
+            get
+            {
+                if (_triggers == null)
+                    Load_Triggers();
+                return _triggers;
+            }
+        }
+
+        #endregion
+
+        #region "Constructors"
+
+        static App()
+        {
+            OptionsCache = new Dictionary<Type, RunOptions>();
+            Start = DateTime.UtcNow;
+        }
+
+        public App()
+        {
+            Load_Activities();
+            Load_Triggers();
+
+            //CpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+            //RamCounter = new PerformanceCounter("Memory", "Available MBytes");
+            //diskTransfersPerSec = new PerformanceCounter("PhysicalDisk", "Disk Transfers/sec", "1 G:", "servername");
+        }
+
+        #endregion
+
+        #region "Loading"
+
+        private static void Load_Plugins()
+        {
+            // loop through each group box an load the plugins
+            if (_plugins != null) return;
+            _plugins = new ObservableCollection<Assembly>
+                {
+                    Assembly.GetExecutingAssembly()
+                };
+            var assemblyLoc = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
+            if (!Directory.Exists(Path.Combine(assemblyLoc, "Plugins"))) return;
+            var pluginsDir = Directory.GetFiles(Path.Combine(assemblyLoc, "Plugins"));
+            foreach (var dll in pluginsDir.Where(dll => Path.GetExtension(dll) == ".dll"))
+            {
+                Log.Info(string.Format("Loading plugin: {0}", Path.GetFileName(dll)));
+                try
+                {
+                    var plugin = Assembly.LoadFrom(dll);
+                    _plugins.Add(plugin);
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(string.Format("There was an error loading the plugin: {0}", dll), ex);
+                }
+            }
+        }
+
+        private static void Load_Triggers()
+        {
+            if (_triggers != null) return;
+            _triggers = new ObservableCollection<Utilities.Trigger>();
+            lock (_triggers)
+            {
+                if (_plugins == null) Load_Plugins();
+                var savedTriggers = AppContext.Triggers.ToList();
+                foreach (var trigger in savedTriggers)
+                {
+                    Log.Info(string.Format("Loading trigger: {0}", trigger.Type));
+                    try
+                    {
+                        var type = Type.GetType(trigger.Type);
+                        var assembly = Plugins.FirstOrDefault(x => (type = x.GetType(trigger.Type)) != null);
+                        if (type == null || assembly == null || !typeof (Utilities.Trigger).IsAssignableFrom(type))
+                            throw new Exception("Defined trigger is not a derivitive of Utilities.Trigger.");
+
+                        var args = Parameters.Args(trigger, type);
+                        if (trigger.Enabled)
+                        {
+                            Current.Dispatcher.BeginInvoke((Action) (() =>
+                                {
+                                    var newTrigger = (Utilities.Trigger) Activator.CreateInstance(type, args);
+                                    newTrigger.Triggered += Triggered;
+                                    _triggers.Add(newTrigger);
+                                }));
+                        }
+                        else
+                        {
+                            var newTrigger = (Utilities.Trigger)FormatterServices.GetSafeUninitializedObject(type);
+                            newTrigger.Entity = trigger;
+                            _triggers.Add(newTrigger);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(string.Format("There was an error creating the trigger: {0} : {1}", trigger.Id,
+                                                trigger.Type), ex);
+                    }
+                }
+            }
+        }
+
+        private static void Load_Activities()
+        {
+            if (_activities != null) return;
+            _activities = new ObservableCollection<Utilities.Activity>();
+            lock (_activities)
+            {
+                // load assemblies
+                if (_plugins == null) Load_Plugins();
+                // loop through each activity and instantiate
+                var savedActivites = AppContext.Activities.ToList();
+                foreach (var activity in savedActivites)
+                {
+                    Log.Info(string.Format("Loading activity: {0}", activity.Type));
+                    try
+                    {
+                        var type = Type.GetType(activity.Type);
+                        var assembly = Plugins.FirstOrDefault(x => (type = x.GetType(activity.Type)) != null);
+                        if (type == null || assembly == null || !typeof (Utilities.Activity).IsAssignableFrom(type))
+                            throw new Exception("Defined activity is not a derivitive of Utilities.Activity.");
+
+                        RunOptionsAttribute attr;
+                        if((attr = type.GetCustomAttributes().FirstOrDefault(x => x is RunOptionsAttribute) as RunOptionsAttribute) == null)
+                            OptionsCache[type] = RunOptions.Default;
+                        else
+                            OptionsCache[type] = attr.Options;
+
+
+                        var args = Parameters.Args(activity, type);
+                        if (activity.Enabled)
+                        {
+                            Current.Dispatcher.BeginInvoke((Action) (() =>
+                                {
+                                    var newActivity = (Utilities.Activity)Activator.CreateInstance(type, args);
+                                    _activities.Add(newActivity);
+                                }));
+                        }
+                        else
+                        {
+                            var newActivity = (Utilities.Activity)FormatterServices.GetSafeUninitializedObject(type);
+                            newActivity.Entity = activity;
+                            _activities.Add(newActivity);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(string.Format("There was an error creating the activity: {0} : {1}", activity.Id,
+                                                activity.Type), ex);
+                    }
+                }
+            }
+        }
+
+        #endregion
+
+        private static void Triggered(Utilities.Trigger trigger, object state)
+        {
+            Log.Info(string.Format("Triggered by: {0}", trigger.Entity.Type));
+
+            // queue the trigger for processing
+            var activityTriggers = trigger.Entity.ActivityTriggers
+                                          .Select(x => Activities
+                                                           .FirstOrDefault(y => y.Entity.Id == x.ActivityId))
+                                          .Where(x => x != null && x.Enabled)
+                                          .ToList();
+            if (!activityTriggers.Any())
+            {
+                Log.Info("No enabled activites, exiting.");
+                return;
+            }
+
+            // try to serialize state information
+            try
+            {
+                using (var mem = new MemoryStream())
+                {
+                    var serlializer = new SoapFormatter
+                        {
+                            AssemblyFormat = FormatterAssemblyStyle.Full
+                        };
+
+                    // store in an object so we know what to expect
+                    if (state as Expression != null)
+                        state = new StoredQuery((Expression)state);
+                    serlializer.Serialize(mem, state);
+                    state = Encoding.Default.GetString(mem.ToArray());
+                    var insertQueue = activityTriggers.Select(activity =>
+                        {
+                            Log.Info(string.Format("Queuing activity [{0}] due to trigger [{1}].", activity.Entity.Type,
+                                                   trigger.Entity.Type));
+                            var queue = new ActivityQueue
+                            {
+                                TriggerId = trigger.Entity.Id,
+                                ActivityId = activity.Entity.Id,
+                                State = state.ToString(),
+                                TimeAdded = DateTime.UtcNow
+                            };
+
+                            if (queue.TriggerId == 7 && queue.ActivityId == 8)
+                            {
+                            }
+                            return queue;
+                        });
+                    lock (QueueLock)
+                    {
+                        QueuingContext.ActivityQueues.InsertAllOnSubmit(insertQueue);
+                        QueuingContext.SubmitChanges();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Error queuing triggered activities.", ex);
+            }
+
+            ThreadPool.QueueUserWorkItem(ProcessQueue);
+        }
+
+        private static void ProcessQueue(object discard)
+        {
+            Log.Info("Processing queue.");
+            // check memory usage
+            /*var memStatus = new WinBase.MEMORYSTATUSEX();
+            float installedMemory = 10;
+            if (Kernel32.GlobalMemoryStatusEx(memStatus))
+            {
+                installedMemory = (float)memStatus.ullAvailPhys/memStatus.ullTotalPhys*100;
+            }
+
+            // check network usage
+            const string TEMPFILE = "tempfile.tmp";
+            var webClient = new System.Net.WebClient();
+
+            Console.WriteLine("Downloading file....");
+
+            var sw = Stopwatch.StartNew();
+            webClient.DownloadFile("http://dl.google.com/googletalk/googletalk-setup.exe", TEMPFILE);
+            sw.Stop();
+
+            var fileInfo = new FileInfo(TEMPFILE);
+            var speed = fileInfo.Length / sw.Elapsed.Seconds;
+
+            Console.WriteLine("Download duration: {0}", sw.Elapsed);
+            Console.WriteLine("File size: {0}", fileInfo.Length.ToString("N0"));
+            Console.WriteLine("Speed: {0} bps ", speed.ToString("N0"));
+
+            // check cpu usage
+            if (CpuCounter.NextValue() < 90 &&
+                installedMemory > 10)
+            {
+            */
+            // we don't want the queue changing while we are getting the current list
+            lock (QueueLock)
+            {
+                var items = QueuingContext.ActivityQueues
+                                          .Where(x => x.TimeStarted == null && x.TimeCompleted == null &&
+                                                      x.TimeAdded >= Start)
+                                          .ToList();
+                foreach (var item in items)
+                {
+                    try
+                    {
+                        item.TimeStarted = DateTime.UtcNow;
+                        QueuingContext.SubmitChanges();
+                        ThreadPool.QueueUserWorkItem(ExecuteActivity, item.Id);
+                        Log.Info(string.Format("Queued activity: {0}", item.Id));
+                    }
+                    catch(Exception ex)
+                    {
+                        Log.Error(string.Format("Error queuing: {0}", item.Id), ex);
+                    }
+                }
+            }
+        }
+
+        private static void ExecuteActivity(object state)
+        {
+            var id = (int) state;
+            Log.Info(string.Format("Starting activity: {0}", id));
+            Utilities.Activity activity;
+            Utilities.Trigger trigger;
+            ActivityQueue queue;
+
+            // update the time started on the queue
+            try
+            {
+                lock (QueueLock)
+                {
+                    queue = QueuingContext.ActivityQueues.First(x => x.Id == id);
+                }
+                trigger = Triggers.FirstOrDefault(x => x.Entity.Id == queue.TriggerId);
+                if (trigger == null)
+                    throw new Exception("Trigger doesn't exist.");
+                activity = Activities.FirstOrDefault(x => x.Entity.Id == queue.ActivityId);
+                if (activity == null)
+                    throw new Exception("Activity doesn't exist.");
+            }
+            catch (Exception ex)
+            {
+                Log.Error("An error occurred while saving the start time of the activity.", ex);
+                return;
+            }
+
+            Log.Info(string.Format("Executing activity: {0}", id));
+            try
+            {
+                var serializer = new SoapFormatter();
+
+                using (var stream = new MemoryStream(Encoding.Default.GetBytes(queue.State)))
+                {
+                    AppDomain.CurrentDomain.AssemblyResolve += LoadComponentAssembly;
+                    var paramState = serializer.Deserialize(stream);
+                    AppDomain.CurrentDomain.AssemblyResolve -= LoadComponentAssembly;
+                    if (paramState as StoredQuery != null)
+                        paramState = ((StoredQuery) paramState).Expression;
+                    activity.Execute(paramState, queue, trigger);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(
+                    string.Format("An exception occured while executing activity: {0} {1}", activity.Entity.Id,
+                                  activity.Entity.Type), ex);
+            }
+
+            // change the timecompleted on the queue item
+            try
+            {
+                lock (QueueLock)
+                {
+                    QueuingContext.ActivityQueues
+                        .First(x => x.Id == queue.Id)
+                        .TimeCompleted = DateTime.UtcNow;
+                    QueuingContext.SubmitChanges();
+                }
+                if (ActivityCompleted != null)
+                    ActivityCompleted(activity);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(
+                    string.Format("There was an error removing the activity from the queue: {0}",
+                                  queue.Id), ex);
+            }
+        }
+
+        private static Assembly LoadComponentAssembly(object sender, ResolveEventArgs args)
+        {
+            return Plugins.FirstOrDefault(x => x.FullName == args.Name);
+        }
+
+        [STAThread]
+        public static void Main()
+        {
+            const string LOG4_NET_CONFIG = "log4net.xml";
+            var log4NetInfo = new FileInfo(LOG4_NET_CONFIG);
+            XmlConfigurator.ConfigureAndWatch(log4NetInfo); 
+            //XmlConfigurator.Configure();
+            var app = new App();
+            app.InitializeComponent();
+            app.Run();
+        }
+
+        private void App_OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            try
+            {
+                e.Handled = true;
+                Log.Fatal("A fatal error occurred.", e.Exception);
+            }
+            // ReSharper disable EmptyGeneralCatchClause
+            // last resort
+            catch
+            // ReSharper restore EmptyGeneralCatchClause
+            {
+                // eat it
+            }
+        }
+    }
+}

@@ -1,0 +1,29 @@
+﻿using System.Collections;
+using System.Runtime.Serialization;
+
+namespace Life.Utilities
+{
+    public abstract class Trigger
+    {
+        private readonly Life.Trigger _trigger;
+        protected Trigger(Life.Trigger trigger)
+        {
+            _trigger = trigger;
+        }
+
+        public delegate void TriggerHandler(Trigger trigger, dynamic state);
+
+        public event TriggerHandler Triggered;
+
+        public Life.Trigger Entity
+        {
+            get { return _trigger; }
+        }
+
+        protected void OnTriggered(dynamic state)
+        {
+            if (Triggered != null)
+                Triggered(this, state);
+        }
+    }
+}

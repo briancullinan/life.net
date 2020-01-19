@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="Life" Class="DatalayerDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="AppSettings" ConnectionString="Data Source=(LocalDB)\v11.0;AttachDbFilename=&quot;C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Life.mdf&quot;;Integrated Security=True;Max Pool Size=1000;Asynchronous Processing=True;MultipleActiveResultSets=True;Connect Timeout=30" SettingsObjectName="Messages.Properties.Settings" SettingsPropertyName="LifeFile" Provider="System.Data.SqlClient" />
+  <Table Name="dbo.TrillianSession" Member="TrillianSessions">
+    <Type Name="TrillianSession">
+      <Column Name="Start" Type="System.DateTime" DbType="DateTime NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="Stop" Type="System.DateTime" DbType="DateTime NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="[From]" Member="From" Type="System.String" DbType="VarChar(60) NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+    </Type>
+  </Table>
+  <Table Name="dbo.TrillianMessage" Member="TrillianMessages">
+    <Type Name="TrillianMessage">
+      <Column Name="Id" Type="System.DateTime" DbType="DateTime NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="Medium" Type="System.String" DbType="VarChar(10) NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="[From]" Member="From" Type="System.String" DbType="VarChar(60) NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="Message" Type="System.String" DbType="Text NOT NULL" CanBeNull="false" UpdateCheck="Never" />
+    </Type>
+  </Table>
+</Database>

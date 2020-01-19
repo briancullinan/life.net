@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+    <configSections>
+    </configSections>
+    <connectionStrings>
+        <add name="Messages.Properties.Settings.LifeConnectionString"
+            connectionString="Data Source=(LocalDB)\v11.0;AttachDbFilename=&quot;C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Life.mdf&quot;;Integrated Security=True;MultipleActiveResultSets=True;Connect Timeout=30"
+            providerName="System.Data.SqlClient" />
+    </connectionStrings>
+</configuration>

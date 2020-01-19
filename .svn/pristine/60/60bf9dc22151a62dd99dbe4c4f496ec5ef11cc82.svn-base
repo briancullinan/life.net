@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="Life" Class="DatalayerDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="AppSettings" ConnectionString="Data Source=(LocalDB)\v11.0;AttachDbFilename=&quot;C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Life.mdf&quot;;Integrated Security=True;MultipleActiveResultSets=True;Connect Timeout=30" SettingsObjectName="Research.Properties.Settings" SettingsPropertyName="LifeFile" Provider="System.Data.SqlClient" />
+  <Table Name="dbo.Research" Member="Researches">
+    <Type Name="Research">
+      <Column Name="Id" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Address" Type="System.String" DbType="VarChar(512) NOT NULL" CanBeNull="false" />
+      <Column Name="FullHtml" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="InterestingHtml" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="TextOnly" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="Title" Type="System.String" DbType="VarChar(1024) NOT NULL" CanBeNull="false" />
+    </Type>
+  </Table>
+</Database>

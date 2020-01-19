@@ -1,0 +1,34 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 5.0 Transitional//EN">
+<html>
+	<head>
+		<title></title>
+		<link rel="stylesheet" id="style" href="css/style.css" type="text/css" />
+		<link rel="stylesheet" id="layout" href="css/layout.css" type="text/css" />
+		<script type="text/javascript" src="js/jquery-1.7.2.js"></script>
+		<script type="text/javascript" src="js/jquery-ui-1.8.18.custom.min.js"></script>
+		<script type="text/javascript" src="js/main.js"></script>
+		<meta http-equiv="X-UA-Compatible" content="IE=9" />
+	</head>
+	<body class="">
+		<span id="status"></span>
+		<div id="heading">Life</div>
+		<div id="windowButtons">
+			<span id="settingsBtn" onclick="window.external.raise('ClickServices')"></span>
+			<span id="closeBtn" onclick="window.external.raise('Close')"></span>
+			<div class="fill"></div>
+		</div>
+		<object data="images/bar.svg" type="image/svg+xml"></object>
+		<div id="afterHeading" class="fill"></div>
+		<div id="files">
+			<div id="streamer"></div>
+			<div class="fill"></div>
+			<div id="time"></div>
+			<div class="fill"></div>
+			<div id="bar"></div>
+			<div id="handle"></div>
+			<div id="the_past">The Past</div>
+			<div id="now">Now</div>
+			<div class="fill"></div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,6 @@
+﻿namespace Firefox.Activities
+{
+    public class UpdateBookmarks
+    {
+    }
+}

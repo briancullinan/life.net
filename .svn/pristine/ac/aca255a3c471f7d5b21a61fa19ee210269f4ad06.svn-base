@@ -1,0 +1,72 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Windows;
+
+namespace Life.Controls
+{
+    /// <summary>
+    /// Interaction logic for Messages.xaml
+    /// </summary>
+    public partial class Messages
+    {
+        public Messages()
+        {
+            InitializeComponent();
+        }
+
+        private void Messages_Loaded(object sender, EventArgs e)
+        {
+            Expression<Func<IQueryable<Message>, IQueryable<FromResult>>> from =
+                messages => messages.GroupBy(x => x.From, (s, enumerable) => new FromResult{From = s, Count = enumerable.Count()});
+            var collection = (ObservableCollection<object>)People.GetValue(Life.Triggers.Application.ResultsProperty);
+            collection.CollectionChanged += FromChanged;
+            Life.Triggers.Application.OnSearched(People, from);
+        }
+
+        private void FromChanged(object sender, NotifyCollectionChangedEventArgs args)
+        {
+            var from = sender as ObservableCollection<object>;
+            if(from != null && args.Action == NotifyCollectionChangedAction.Add)
+                foreach(var add in args.NewItems)
+                    if (from.Count(x => x.Equals(add)) > 1)
+                    {
+                        from.Remove(from.Last(x => x.Equals(add)));
+                    }
+        }
+    }
+
+    internal class FromResult : IEqualityComparer
+    {
+        private List<string> _alternatives; 
+
+        public FromResult()
+        {
+            
+        }
+
+        public string From { get; set; }
+
+        public int Count { get; set; }
+        public bool Equals(object x, object y)
+        {
+            if (_alternatives == null)
+                _alternatives = new DatalayerDataContext()
+                    .RelationTexts
+                    .Where(z => z.Left.Contains(From) || z.Right.Contains(From))
+                    .SelectMany(z => new[] {z.Left, z.Right})
+                    .Distinct()
+                    .ToList();
+            return x is FromResult && y is FromResult && ((FromResult)x)._alternatives.Intersect(((FromResult)y)._alternatives).Any();
+        }
+
+        public int GetHashCode(object obj)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

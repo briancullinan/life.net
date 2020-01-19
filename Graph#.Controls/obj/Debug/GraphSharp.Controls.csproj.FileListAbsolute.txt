@@ -1,0 +1,12 @@
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\bin\GraphSharp.Controls.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\bin\GraphSharp.Controls.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#.Controls\obj\Debug\GraphSharp.Controls.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#.Controls\obj\Debug\GeneratedInternalTypeHelper.g.cs
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#.Controls\obj\Debug\GraphSharp.Controls_MarkupCompile.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#.Controls\obj\Debug\GraphSharp.Controls_MarkupCompile.lref
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#.Controls\obj\Debug\Themes\Generic.baml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#.Controls\obj\Debug\GraphSharp.Controls.g.resources
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#.Controls\obj\Debug\GraphSharp.Properties.Resources.resources
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#.Controls\obj\Debug\GraphSharp.Controls.csproj.GenerateResource.Cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#.Controls\obj\Debug\GraphSharp.Controls.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#.Controls\obj\Debug\GraphSharp.Controls.pdb

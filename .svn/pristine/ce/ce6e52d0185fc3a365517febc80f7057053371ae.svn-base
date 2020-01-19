@@ -1,0 +1,49 @@
+﻿using System;
+using System.ComponentModel;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Threading;
+
+namespace Life.Triggers
+{
+    public class Searched : Utilities.Trigger
+    {
+        public Searched(Trigger trigger) : base(trigger)
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke(
+                () => ((MainWindow) System.Windows.Application.Current.MainWindow).Search.Click += SearchOnClick);
+        }
+
+        private void SearchOnClick(object sender, RoutedEventArgs routedEventArgs)
+        {
+            OnTriggered(((MainWindow)System.Windows.Application.Current.MainWindow).SearchText.Text);
+        }
+
+        public static void OnResulted(object item, Type frameworkType = null)
+        {
+            if (!System.Windows.Application.Current.Dispatcher.CheckAccess())
+            {
+                System.Windows.Application.Current.Dispatcher.BeginInvoke((Action<INotifyPropertyChanged, Type>) OnResulted,
+                                                                          DispatcherPriority.Input, item, frameworkType);
+                return;
+            }
+
+            var element = item as FrameworkElement;
+            if (element != null)
+                ((MainWindow)System.Windows.Application.Current.MainWindow).Items.Add(element);
+            else if (frameworkType == null)
+                ((MainWindow)System.Windows.Application.Current.MainWindow).Items.Add(new Control
+                    {
+                        DataContext = item
+                    });
+            else if (typeof (FrameworkElement).IsAssignableFrom(frameworkType))
+            {
+                var elem = (FrameworkElement)Activator.CreateInstance(frameworkType);
+                elem.DataContext = item;
+                ((MainWindow) System.Windows.Application.Current.MainWindow).Items.Add(elem);
+            }
+            else
+                throw new NotImplementedException();
+        }
+    }
+}

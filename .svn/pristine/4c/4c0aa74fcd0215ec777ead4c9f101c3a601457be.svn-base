@@ -1,0 +1,17 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <Style x:Key="HorizontalScroller" TargetType="{x:Type ScrollViewer}">
+        <Style.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.MergedDictionaries>
+                    <ResourceDictionary Source="pack://application:,,,/Fluent;component/Themes/Generic.xaml" />
+                </ResourceDictionary.MergedDictionaries>
+            </ResourceDictionary>
+        </Style.Resources>
+        <Style.BasedOn>
+            <StaticResource ResourceKey="RibbonTabScrollViewer" />
+        </Style.BasedOn>
+    </Style>
+
+</ResourceDictionary>

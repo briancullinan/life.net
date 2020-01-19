@@ -1,0 +1,99 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="Life" Class="DatalayerDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="AppSettings" ConnectionString="Data Source=(LocalDB)\v11.0;AttachDbFilename=&quot;C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Life.mdf&quot;;Integrated Security=True;MultipleActiveResultSets=True;Connect Timeout=30" SettingsObjectName="Facebook.Properties.Settings" SettingsPropertyName="LifeFile" Provider="System.Data.SqlClient" />
+  <Table Name="dbo.FacebookPlace" Member="FacebookPlaces">
+    <Type Name="FacebookPlace">
+      <Column Name="Id" Type="System.Int64" DbType="BigInt NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="Name" Type="System.String" DbType="VarChar(256)" CanBeNull="true" />
+      <Column Name="Street" Type="System.String" DbType="VarChar(256)" CanBeNull="true" />
+      <Column Name="City" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="State" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="Zip" Type="System.String" DbType="VarChar(20)" CanBeNull="true" />
+      <Column Name="Country" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="Latitude" Type="System.Double" DbType="Float NOT NULL" CanBeNull="false" />
+      <Column Name="Longitude" Type="System.Double" DbType="Float NOT NULL" CanBeNull="false" />
+      <Association Name="FacebookPlace_FacebookContact" Member="FacebookContacts" ThisKey="Id" OtherKey="Location" Type="FacebookContact" />
+      <Association Name="FacebookPlace_FacebookPhoto" Member="FacebookPhotos" ThisKey="Id" OtherKey="Location" Type="FacebookPhoto" />
+      <Association Name="FacebookPlace_FacebookEvent" Member="FacebookEvents" ThisKey="Id" OtherKey="Place" Type="FacebookEvent" />
+    </Type>
+  </Table>
+  <Table Name="dbo.FacebookAlbum" Member="FacebookAlbums">
+    <Type Name="FacebookAlbum">
+      <Column Name="Id" Type="System.Int64" DbType="BigInt NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="Name" Type="System.String" DbType="VarChar(256) NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+      <Column Name="TimeCreated" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="TimeUpdated" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Contact" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Column Name="Type" Type="System.String" DbType="VarChar(50) NOT NULL" CanBeNull="false" />
+      <Column Name="Cover" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Association Name="FacebookAlbum_FacebookPhoto" Member="FacebookPhotos" ThisKey="Id" OtherKey="Album" Type="FacebookPhoto" />
+      <Association Name="FacebookContact_FacebookAlbum" Member="FacebookContact" ThisKey="Contact" OtherKey="Id" Type="FacebookContact" IsForeignKey="true" />
+      <Association Name="FacebookPhoto_FacebookAlbum" Member="FacebookPhoto" ThisKey="Cover" OtherKey="Id" Type="FacebookPhoto" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.FacebookContact" Member="FacebookContacts">
+    <Type Name="FacebookContact">
+      <Column Name="Id" Type="System.Int64" DbType="BigInt NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="Name" Type="System.String" DbType="VarChar(256) NOT NULL" CanBeNull="false" />
+      <Column Name="Username" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="Birthday" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="LastUpdated" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Gender" Type="System.String" DbType="VarChar(1)" CanBeNull="true" />
+      <Column Name="Location" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Association Name="FacebookContact_FacebookAlbum" Member="FacebookAlbums" ThisKey="Id" OtherKey="Contact" Type="FacebookAlbum" />
+      <Association Name="FacebookContact_FacebookPhoto" Member="FacebookPhotos" ThisKey="Id" OtherKey="Contact" Type="FacebookPhoto" />
+      <Association Name="FacebookContact_FacebookEvent" Member="FacebookEvents" ThisKey="Id" OtherKey="Contact" Type="FacebookEvent" />
+      <Association Name="FacebookContact_FacebookMessage" Member="FacebookMessages" ThisKey="Id" OtherKey="From" Type="FacebookMessage" />
+      <Association Name="FacebookContact_FacebookMessage1" Member="FacebookMessages1" ThisKey="Id" OtherKey="To" Type="FacebookMessage" />
+      <Association Name="FacebookPlace_FacebookContact" Member="FacebookPlace" ThisKey="Location" OtherKey="Id" Type="FacebookPlace" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.FacebookPhoto" Member="FacebookPhotos">
+    <Type Name="FacebookPhoto">
+      <Column Name="Id" Type="System.Int64" DbType="BigInt NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="Name" Type="System.String" DbType="VarChar(512)" CanBeNull="true" />
+      <Column Name="Height" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Width" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Contact" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Column Name="Location" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Column Name="TimeCreated" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="TimeUpdated" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Comments" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+      <Column Name="Tags" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+      <Column Name="Album" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Association Name="FacebookPhoto_FacebookAlbum" Member="FacebookAlbums" ThisKey="Id" OtherKey="Cover" Type="FacebookAlbum" />
+      <Association Name="FacebookAlbum_FacebookPhoto" Member="FacebookAlbum" ThisKey="Album" OtherKey="Id" Type="FacebookAlbum" IsForeignKey="true" />
+      <Association Name="FacebookContact_FacebookPhoto" Member="FacebookContact" ThisKey="Contact" OtherKey="Id" Type="FacebookContact" IsForeignKey="true" />
+      <Association Name="FacebookPlace_FacebookPhoto" Member="FacebookPlace" ThisKey="Location" OtherKey="Id" Type="FacebookPlace" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.FacebookEvent" Member="FacebookEvents">
+    <Type Name="FacebookEvent">
+      <Column Name="Id" Type="System.Int64" DbType="BigInt NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="Contact" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Column Name="TimeStart" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="TimeEnd" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="TimeUpdated" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Name" Type="System.String" DbType="VarChar(256) NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="Place" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Column Name="Response" Type="System.String" DbType="VarChar(20) NOT NULL" CanBeNull="false" />
+      <Association Name="FacebookContact_FacebookEvent" Member="FacebookContact" ThisKey="Contact" OtherKey="Id" Type="FacebookContact" IsForeignKey="true" />
+      <Association Name="FacebookPlace_FacebookEvent" Member="FacebookPlace" ThisKey="Place" OtherKey="Id" Type="FacebookPlace" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.FacebookMessage" Member="FacebookMessages">
+    <Type Name="FacebookMessage">
+      <Column Name="Id" Type="System.Int64" DbType="BigInt NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="[From]" Member="From" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Column Name="[To]" Member="To" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Column Name="TimeCreated" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="Message" Type="System.String" DbType="Text" CanBeNull="true" UpdateCheck="Never" />
+      <Column Name="Parent" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Association Name="FacebookMessage_FacebookMessage" Member="FacebookMessages" ThisKey="Id" OtherKey="Parent" Type="FacebookMessage" />
+      <Association Name="FacebookContact_FacebookMessage" Member="FacebookContact" ThisKey="From" OtherKey="Id" Type="FacebookContact" IsForeignKey="true" />
+      <Association Name="FacebookMessage_FacebookMessage" Member="FacebookMessage1" ThisKey="Parent" OtherKey="Id" Type="FacebookMessage" IsForeignKey="true" />
+      <Association Name="FacebookContact_FacebookMessage1" Member="FacebookContact1" ThisKey="To" OtherKey="Id" Type="FacebookContact" IsForeignKey="true" />
+    </Type>
+  </Table>
+</Database>

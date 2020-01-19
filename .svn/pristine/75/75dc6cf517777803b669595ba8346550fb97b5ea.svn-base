@@ -1,0 +1,97 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
+
+namespace Facebook
+{
+    public static partial class Update
+    {
+        public const string MESSAGE_FIELDS = "id,from,to,message,updated_time,comments";
+
+        public static FacebookMessage Message(long id, JToken json)
+        {
+            FacebookMessage fm;
+            if ((fm = Data.FacebookMessages.FirstOrDefault(x => x.Id == id)) == null)
+            {
+                fm = new FacebookMessage
+                {
+                    Id = id,
+                    TimeCreated = json.TryGetValue<DateTime?>("updated_time") ?? json.TryGetValue<DateTime>("created_time")
+                };
+                if (fm.TimeCreated == default(DateTime))
+                    return null;
+                Data.FacebookMessages.InsertOnSubmit(fm);
+            }
+            if (!json.Any())
+                return fm;
+
+            fm.Message = json.TryGetValue<string>("message");
+
+            try
+            {
+                Data.SubmitChanges();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(string.Format("There was an error saving the message: {0} {1}", id, fm.Message), ex);
+                return null;
+            }
+
+            var fromId = json["from"].TryGetValue<long?>("id");
+            if (fromId != null)
+            {
+                var contact = Contact(fromId.Value, json["from"]);
+                if (contact != null)
+                    fm.From = contact.Id;
+                try
+                {
+                    Data.SubmitChanges();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(string.Format("There was an error saving the message: {0} {1}", id, fm.Message), ex);
+                }
+            }
+
+            var toId = json["to"].TryGetValue<long?>("id");
+            if (toId != null)
+            {
+                var contact = Contact(toId.Value, json["to"]);
+                if (contact != null)
+                    fm.To = contact.Id;
+                try
+                {
+                    Data.SubmitChanges();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(string.Format("There was an error saving the message: {0} {1}", id, fm.Message), ex);
+                }
+            }
+
+            var comments = json.TryGetValue<JObject>("comments");
+            if (comments != null)
+            {
+                foreach (var comment in comments["data"])
+                {
+                    var newId = comment.TryGetValue<long>("id");
+                    var message = Message(newId, comment);
+                    message.Parent = id;
+                    try
+                    {
+                        Data.SubmitChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(string.Format("There was an error saving the message: {0} {1}", newId, message.Message), ex);
+                    }
+                }
+            }
+
+            return fm;
+        }
+    }
+}

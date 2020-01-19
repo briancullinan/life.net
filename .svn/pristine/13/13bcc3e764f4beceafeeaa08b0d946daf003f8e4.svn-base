@@ -1,0 +1,21 @@
+﻿using System;
+using System.Runtime.Serialization;
+
+namespace Life.Controls
+{
+    [Serializable]
+    public class Message : ISerializable
+    {
+        public string From { get; set; }
+
+        public Message(SerializationInfo info, StreamingContext context)
+        {
+            From = (string)info.GetValue("from", typeof(string));
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("from", From);
+        }
+    }
+}

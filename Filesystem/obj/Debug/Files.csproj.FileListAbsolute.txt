@@ -1,0 +1,12 @@
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\Files.dll.config
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\Files.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\Files.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Filesystem\obj\Debug\Files.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Filesystem\obj\Debug\FileItem.baml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Filesystem\obj\Debug\FileItem.g.cs
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Filesystem\obj\Debug\Files_MarkupCompile.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Filesystem\obj\Debug\Files.g.resources
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Filesystem\obj\Debug\Files.Properties.Resources.resources
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Filesystem\obj\Debug\Files.csproj.GenerateResource.Cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Filesystem\obj\Debug\Files.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Filesystem\obj\Debug\Files.pdb

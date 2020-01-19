@@ -1,0 +1,37 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Life.Triggers;
+using Life.Utilities;
+
+namespace Email.Activities
+{
+    public class Search : Activity
+    {
+        public Search(Life.Activity activity) : base(activity)
+        {
+        }
+
+        public override void Execute(object context)
+        {
+            var searchTerm = context.ToString();
+            var data = new DatalayerDataContext();
+            var query = data.Emails.Where(
+                x =>
+                x.Subject.Contains(searchTerm) || x.Body.Contains(searchTerm));
+            using (var command = data.GetCommand(query))
+            {
+                command.Connection.Open();
+                using (var reader = command.ExecuteReader())
+                {
+                    foreach (var result in data.Translate<Email>(reader))
+                    {
+                        Searched.OnResulted(result, typeof(Controls.Email));
+                    }
+                }
+            }
+        }
+    }
+}

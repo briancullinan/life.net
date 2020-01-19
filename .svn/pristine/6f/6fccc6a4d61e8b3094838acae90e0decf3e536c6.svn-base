@@ -1,0 +1,46 @@
+﻿using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Windows;
+using AvalonDock.Themes;
+using Life.Annotations;
+using TimelineLibrary;
+
+namespace Life
+{
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml
+    /// </summary>
+    public partial class MainWindow : INotifyPropertyChanged
+    {
+        private Theme _avalonDockTheme = new MetroTheme();
+        public Theme AvalonDockTheme
+        {
+            get
+            {
+                return _avalonDockTheme;
+            }
+
+            set
+            {
+                if (!Equals(_avalonDockTheme, value))
+                {
+                    _avalonDockTheme = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvocator]
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            var handler = PropertyChanged;
+            if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+}

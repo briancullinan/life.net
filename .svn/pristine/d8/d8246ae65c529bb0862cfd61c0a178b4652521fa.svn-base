@@ -1,0 +1,52 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Web;
+using Life.Utilities;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Firefox;
+
+namespace Research.Activities
+{
+    public class DoResearch : Activity, IDisposable
+    {
+        private static readonly Dictionary<string, FirefoxDriver> Profiles = new Dictionary<string, FirefoxDriver>();
+        private readonly string _profile;
+
+        public DoResearch(Life.Activity activity, string profile = "") : base(activity)
+        {
+            _profile = profile;
+            Profiles[profile] = new FirefoxDriver(new FirefoxProfile(profile));
+        }
+
+        public override void Execute(dynamic context)
+        {
+            // check for spelling errors
+            var driver = Profiles[_profile];
+            driver.Navigate().GoToUrl("https://www.google.com/search?q=" + HttpUtility.UrlEncode(context.ToString()) + "&ie=utf-8&oe=utf-8");
+            var safety = 20;
+            var elem = driver.FindElementsById("resultStats").FirstOrDefault();
+            while (safety > 0 && (elem == null || elem.Location == Point.Empty))
+            {
+                Thread.Sleep(100);
+                safety--;
+                elem = driver.FindElementsById("resultStats").FirstOrDefault();
+            }
+            var results = string.Join(
+                Environment.NewLine, 
+                driver.FindElementsByClassName("r")
+                .Select(x => x.Text + " - " + x.FindElement(By.TagName("a")).GetAttribute("href"))
+                .ToList());
+            Console.WriteLine(results);
+        }
+
+        public void Dispose()
+        {
+            Profiles[_profile].Quit();
+        }
+    }
+}

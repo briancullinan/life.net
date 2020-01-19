@@ -1,0 +1,44 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Life.Triggers;
+using Life.Utilities;
+
+namespace Files.Activities
+{
+    public class Search : Activity
+    {
+        internal delegate void TriggerFile(Filesystem file);
+        internal static event TriggerFile Found;
+
+        public Search(Life.Activity activity)
+            : base(activity)
+        {
+        }
+
+        public override void Execute(object context, Trigger trigger)
+        {
+            var searchTerm = context.ToString();
+            var data = new DatalayerDataContext();
+            var query = data.Filesystems.Where(
+                x =>
+                x.Filepath.Contains(searchTerm) || x.Computer.Contains(searchTerm) ||
+                x.Username.Contains(searchTerm));
+            using (var command = data.GetCommand(query))
+            {
+                command.Connection.Open();
+                using (var reader = command.ExecuteReader())
+                {
+                    foreach (var result in data.Translate<Filesystem>(reader))
+                    {
+                        if (Found != null)
+                            Found(result);
+                    }
+                }
+            }
+
+        }
+    }
+}

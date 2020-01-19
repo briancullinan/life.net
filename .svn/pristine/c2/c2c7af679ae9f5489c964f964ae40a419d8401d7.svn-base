@@ -1,0 +1,23 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Life.Utilities.Extensions
+{
+    public static class ObjectExtensions
+    {
+        public static bool IsConstructed(this object obj)
+        {
+            var trace = new StackTrace();
+            var frames = trace.GetFrames();
+            
+            return frames
+                .Select(t => t.GetMethod())
+                .All(method => !method.IsConstructor || !obj.GetType().IsAssignableFrom(method.ReflectedType));
+        }
+    }
+}

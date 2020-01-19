@@ -1,0 +1,11 @@
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Facebook\bin\Debug\Facebook.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Facebook\bin\Debug\Facebook.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Facebook\bin\Debug\Newtonsoft.Json.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Facebook\bin\Debug\Newtonsoft.Json.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Facebook\bin\Debug\Newtonsoft.Json.xml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\Facebook.dll.config
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\Facebook.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\Facebook.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Facebook\obj\Debug\Facebook.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Facebook\obj\Debug\Facebook.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Facebook\obj\Debug\Facebook.pdb

@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="Life" Class="DatalayerDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="AppSettings" ConnectionString="Data Source=corrin;Initial Catalog=Life;Persist Security Info=True;User ID=hagal;MultipleActiveResultSets=True" SettingsObjectName="Life.Properties.Settings" SettingsPropertyName="LifeConnectionString1" Provider="System.Data.SqlClient" />
+  <Table Name="dbo.[Trigger]" Member="Triggers">
+    <Type Name="Trigger">
+      <Column Name="Id" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Type" Type="System.String" DbType="Text NOT NULL" CanBeNull="false" UpdateCheck="Never" />
+      <Column Name="TimeAdded" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Association Name="Trigger_Parameter" Member="Parameters" ThisKey="Id" OtherKey="TriggerId" Type="Parameter" />
+      <Association Name="Trigger_ActivityTrigger" Member="ActivityTriggers" ThisKey="Id" OtherKey="TriggerId" Type="ActivityTrigger" />
+    </Type>
+  </Table>
+  <Table Name="dbo.State" Member="States">
+    <Type Name="State">
+      <Column Name="Id" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Parameter" Type="System.String" DbType="Text NOT NULL" CanBeNull="false" UpdateCheck="Never" />
+      <Column Name="Value" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="ActivityId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Association Name="Activity_State" Member="Activity" ThisKey="ActivityId" OtherKey="Id" Type="Activity" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Parameter" Member="Parameters">
+    <Type Name="Parameter">
+      <Column Name="Id" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Parameter" Member="Parameter1" Type="System.String" DbType="Text NOT NULL" CanBeNull="false" UpdateCheck="Never" />
+      <Column Name="Value" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="TriggerId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Association Name="Trigger_Parameter" Member="Trigger" ThisKey="TriggerId" OtherKey="Id" Type="Trigger" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Activity" Member="Activities">
+    <Type Name="Activity">
+      <Column Name="Id" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Type" Type="System.String" DbType="Text NOT NULL" CanBeNull="false" UpdateCheck="Never" />
+      <Column Name="ScheduledTime" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Association Name="Activity_State" Member="States" ThisKey="Id" OtherKey="ActivityId" Type="State" />
+      <Association Name="Activity_ActivityTrigger" Member="ActivityTriggers" ThisKey="Id" OtherKey="ActivityId" Type="ActivityTrigger" />
+      <Association Name="Activity_ActivityQueue" Member="ActivityQueues" ThisKey="Id" OtherKey="ActivityId" Type="ActivityQueue" />
+    </Type>
+  </Table>
+  <Table Name="dbo.ActivityTrigger" Member="ActivityTriggers">
+    <Type Name="ActivityTrigger">
+      <Column Name="ActivityId" Type="System.Int32" DbType="Int NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="TriggerId" Type="System.Int32" DbType="Int NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Association Name="Activity_ActivityTrigger" Member="Activity" ThisKey="ActivityId" OtherKey="Id" Type="Activity" IsForeignKey="true" />
+      <Association Name="Trigger_ActivityTrigger" Member="Trigger" ThisKey="TriggerId" OtherKey="Id" Type="Trigger" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.ActivityQueue" Member="ActivityQueues">
+    <Type Name="ActivityQueue">
+      <Column Name="Id" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="ActivityId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="State" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+      <Column Name="TimeCompleted" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="TimeStarted" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Association Name="Activity_ActivityQueue" Member="Activity" ThisKey="ActivityId" OtherKey="Id" Type="Activity" IsForeignKey="true" />
+    </Type>
+  </Table>
+</Database>

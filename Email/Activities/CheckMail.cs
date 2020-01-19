@@ -1,0 +1,644 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net.Security;
+using System.Net.Sockets;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using Life;
+using WindowsNative;
+using log4net;
+using Activity = Life.Utilities.Activity;
+using Trigger = Life.Utilities.Trigger;
+
+namespace Email.Activities
+{
+    public class CheckMail : Activity, IDisposable
+    {
+        private static readonly ILog Log = LogManager.GetLogger(typeof(CheckMail));
+        private readonly string _credential;
+        private bool _closing;
+        private string[] _capabilities;
+        private Stream _stream;
+        private int _tag;
+        private TcpClient _connection;
+        private bool _connected;
+        private bool _authenticated;
+        private string _selected;
+        private readonly int _seconds;
+        private readonly AuthMethods _method;
+        private bool _isIdle;
+        private readonly ManualResetEvent _syncBreak = new ManualResetEvent(true);
+        private bool _tryingToPoll;
+
+        private class ImapParams
+        {
+            public string Host { get; set; }
+            public string Username { get; set; }
+            public string Password { get; set; }
+            public int Port { get; set; }
+            public bool Validate { get; set; }
+            public bool Ssl { get; set; }
+            public ActivityQueue Queue { get; set; }
+        }
+
+        static CheckMail()
+        {
+            // fix the dates
+            /*IEnumerable<int> ids;
+            using (var data = new DatalayerDataContext())
+                ids = data.Emails.Where(x => x.Received > DateTime.Now.Date).Select(x => x.Id).ToList();
+            foreach (var id in ids)
+            {
+                using (var data = new DatalayerDataContext())
+                {
+                    var email = data.Emails.First(x => x.Id == id);
+                    var tmpMessage = new Message(email.Raw, Message.DefaultEncoding, email.Uid, email.Folder);
+                    email.Received = tmpMessage.Received;
+                    try
+                    {
+                        data.SubmitChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        
+                    }
+                }
+            }
+            */
+        }
+
+        public enum AuthMethods
+        {
+            Login,
+            CRAMMD5,
+            SaslOAuth
+        }
+
+        [Category("Authentication")]
+        [Description("The name of the Windows credential to use to log in.")]
+        public string Credential
+        {
+            get { return GetValue<string>(); }
+            set { SetValue(value); }
+        }
+
+        [Category("Authentication")]
+        public int Seconds
+        {
+            get { return GetValue<int>(); }
+            set { SetValue(value); }
+        }
+
+        [Category("Authentication")]
+        public AuthMethods Method
+        {
+            get { return GetValue<AuthMethods>(); }
+            set { SetValue(value); }
+        }
+        
+        public CheckMail(Life.Activity activity, string credential = "Life.CheckMail", int seconds = 60, AuthMethods method = AuthMethods.Login) 
+            : base(activity)
+        {
+            _credential = credential;
+            _seconds = seconds;
+            _method = method;
+        }
+
+        public override void Execute(object context, ActivityQueue queue, Trigger trigger)
+        {
+            // get the login information out of the credential store
+            int count;
+            IntPtr pCredentials;
+            var ret = AdvApi32.CredEnumerate(null, 0, out count, out pCredentials);
+            if (!ret)
+                throw new Win32Exception();
+            var credentials = new IntPtr[count];
+            // convert pointer to array to array of pointers
+            for (var n = 0; n < count; n++)
+            {
+                credentials[n] = Marshal.ReadIntPtr(pCredentials,
+                                                    n * Marshal.SizeOf(typeof(IntPtr)));
+            }
+
+            var login = credentials
+                // convert each pointer to a structure
+                .Select(ptr => (WinCred.Credential)Marshal.PtrToStructure(ptr, typeof(WinCred.Credential)))
+                // select the structure with the matching credential name
+                .FirstOrDefault(cred => cred.targetName.StartsWith(_credential));
+
+            // get the password
+            var currentPass = Marshal.PtrToStringUni(login.credentialBlob, (int)login.credentialBlobSize / 2);
+            var lastError = Marshal.GetLastWin32Error();
+            if (lastError != 0)
+                throw new Win32Exception(lastError);
+
+            // finally try to log in
+            var hostArr = login.targetName.Substring(_credential.Length + 1).Split(':');
+            var host = hostArr[0];
+            var port = hostArr.Length > 1 ? int.Parse(hostArr[1]) : 143;
+            var @params = new ImapParams
+            {
+                Host = host,
+                Username = login.userName,
+                Password = currentPass,
+                Port = port,
+                Validate = false,
+                Ssl = port == 993 || port == 995,
+                Queue = queue
+            };
+
+            // start a thread to check for e-mail
+            ThreadPool.QueueUserWorkItem(MailPoller, @params);
+        }
+
+        private void MailPoller(object state)
+        {
+            var client = state as ImapParams;
+            while (client != null && !_closing)
+            {
+                // wait for the synchronizer to unpause
+                _tryingToPoll = true;
+                _syncBreak.WaitOne();
+
+                // search for new messages in inbox
+                string[] search;
+                if (!Connect(client) ||
+                    !Login(client) ||
+                    !Select("INBOX") ||
+                    !(search = Search(SearchCondition.Deleted().Not().And(SearchCondition.Unseen()))).Any())
+                {
+                    Thread.Sleep(TimeSpan.FromSeconds(_seconds));
+                    continue;
+                }
+
+                // trigger event when new messages arrive
+                if (search != null)
+                {
+                    var msgs = search.Select(x => Fetch(int.Parse(x), false, true))
+                                     .Where(x => x != null).ToList();
+                    OnResulted(msgs, client.Queue);
+                }
+
+                if (_seconds == 0)
+                    break;
+
+                // drop in to synchronization
+                _tryingToPoll = false;
+                ThreadPool.QueueUserWorkItem(SynchronizeMail, state);
+                Thread.Sleep(TimeSpan.FromSeconds(_seconds));
+            }
+        }
+
+        private void SynchronizeMail(object state)
+        {
+            var client = state as ImapParams;
+            _syncBreak.Reset();
+            while (client != null && !_closing && !_tryingToPoll)
+            {
+                string[] folders;
+                if (!Connect(client) ||
+                    !Login(client) ||
+                    !(folders = List()).Any())
+                {
+                    // idle if we don't have anything else to do
+                    Idle(TimeSpan.FromSeconds(_seconds).TotalMilliseconds);
+                    continue;
+                }
+
+                // loop through folders looking for mail
+                var folder = folders.GetEnumerator();
+                while (!_tryingToPoll && folder.MoveNext())
+                {
+                    // download each mail item
+                    // list all mail in the folder
+                    if (!Connect(client) ||
+                        !Login(client) ||
+                        !Select((string) folder.Current))
+                        continue;
+
+                    // get a list of all the uids we need to retrieve
+                    var ids = new List<int>();
+                    FetchMulti(new List<int>(), message => ids.Add(message.Uid), false, true, null, true);
+                    using (var data = new DatalayerDataContext())
+                    {
+                        var cached = data.Emails.Where(x => x.Folder == (string) folder.Current).Select(x => x.Uid);
+                        var diff = ids.Except(cached).ToList();
+                        if (!diff.Any())
+                            continue;
+                        FetchMulti(diff, message => InsertMessage(message, client), false, true);
+                    }
+
+                }
+            }
+            _syncBreak.Set();
+        }
+
+        private void InsertMessage(Message message, ImapParams client)
+        {
+            using (var data = new DatalayerDataContext())
+            {
+                // check if the message is already added
+                if (data.Emails.Any(x => x.Uid == message.Uid && x.Folder == message.Folder))
+                    return;
+
+                try
+                {
+                    // store important information in the database for later searching
+                    var newMail = new Email
+                        {
+                            Body = message.Body,
+                            Folder = message.Folder,
+                            Uid = message.Uid,
+                            Headers = message.RawHeaders,
+                            Host = client.Username + "@" + client.Host,
+                            Raw = message.Raw,
+                            Subject = message.Subject,
+                            To = string.Join(";", message.To),
+                            From = string.Join(";", message.From),
+                            Received = message.Received
+                        };
+                    data.Emails.InsertOnSubmit(newMail);
+
+                    data.SubmitChanges();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(
+                        string.Format("Error caching e-mail {0} {1}", message.Uid,
+                                      message.Folder), ex);
+                }
+            }
+        }
+
+        private string[] List(string folder = ".")
+        {
+            try
+            {
+                var tag = GetTag();
+                var command = tag + "LIST " + folder.QuoteString() + "*";
+                _stream.SendCommand(command);
+                var response = String.Empty;
+                string temp;
+                while (!(temp = _stream.ReadLine()).StartsWith(tag))
+                {
+                    response += (!string.IsNullOrEmpty(response) ? Environment.NewLine : "") + temp;
+                }
+
+                if (!temp.Contains("OK LIST"))
+                    throw new Exception("Problem listing folders");
+
+                // parse folder information out of text response
+                var listRegex = new Regex(@"^\*\s+LIST\s+\((?<flags>[^\)]*?)\)\s+""(?<cwd>[^\""]*)""\s+""*(?<dir>.*?)""*\s*$", RegexOptions.Multiline);
+                var matches = listRegex.Matches(response).OfType<Match>().Select(x => x.Groups[3].Value);
+
+                return matches.ToArray();
+            }
+            catch (Exception ex)
+            {
+                if (ex is IOException)
+                    _authenticated = _connected = false;
+                Log.Error(string.Format("There was an error listing imap folders: {0}", folder), ex);
+                return new string[0];
+            }
+        }
+
+        private void Idle(double sleep)
+        {
+            try
+            {
+                if (_isIdle)
+                    return;
+
+                var watch = Stopwatch.StartNew();
+                var tag = GetTag();
+                var response = _stream.SendCommand(tag + "IDLE").ReadLine();
+                _isIdle = true;
+                while (watch.ElapsedMilliseconds < sleep || sleep.Equals(0))
+                {
+                    try
+                    {
+                        string temp;
+                        while (!(temp = _stream.ReadLine()).StartsWith(tag))
+                        {
+                            response += Environment.NewLine + temp;
+                        }
+                        // something happened while we are idling if it returns here
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        // blocked for the specified period of time
+                        if (!(ex is IOException))
+                            Log.Error("Error idling.", ex);
+                    }
+                }
+
+                // try to noop to make sure connection is still open
+                try
+                {
+                    response = _stream.SendCommand("DONE").ReadLine();
+                    if (!response.Contains("OK IDLE"))
+                        throw new Exception("Problem Idling");
+                    tag = GetTag();
+                    response = _stream.SendCommand(tag + "NOOP").ReadLine();
+                    if (!response.Contains("OK NOOP"))
+                        throw new Exception("Problem Idling");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Connection aborted during idle.", ex);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                if (ex is IOException)
+                    _authenticated = _connected = false;
+                Log.Error("There was an error starting the idle.", ex);
+            }
+            finally
+            {
+                _isIdle = false;
+            }
+        }
+
+        private Message Fetch(int uid, bool headersOnly = false, bool peek = false, string[] fields = null)
+        {
+            Message message = null;
+            FetchMulti(new List<int> {uid}, msg => message = msg, headersOnly, peek, fields);
+            return message;
+        }
+
+        private void FetchMulti(List<int> uid, Action<Message> action, bool headersOnly = false, bool peek = false, string[] fields = null, bool uidOnly = false)
+        {
+            if(action == null)
+                throw new ArgumentNullException("action");
+
+            var response = string.Empty;
+            var regex =
+                new Regex(!headersOnly && !uidOnly
+                              ? @"UID\s(?<uid>[0-9]*)\sFLAGS\s\((?<flags>.*?)\)\sBODY\[.*?\]\s\{(?<size>[0-9]*)\}"
+                              : @"UID\s(?<uid>[0-9]*)");
+            try
+            {
+                var fieldsStr = (fields != null
+                                     ? (".FIELDS ("
+                                        + String.Join(" ", fields)
+                                        + ")")
+                                     : "");
+
+                // group numbers together to reduce the number of commands
+                var commandGroups = uid
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .GroupAdjacentBy((x, y) => x + 1 == y)
+                    .Select(g => new[] {g.First(), g.Last()}.Distinct())
+                    .Select(g => string.Join(":", g));
+                if (!uid.Any())
+                    commandGroups = new[] {"1:*"};
+
+                foreach (var set in commandGroups)
+                {
+                    var tag = GetTag();
+                    var command = tag + "UID FETCH " + set + " ("
+                                  + "UID FLAGS BODY"
+                                  + (peek ? ".PEEK" : null)
+                                  + "[" + (headersOnly ? ("HEADER" + fieldsStr) : null)
+                                  + "])";
+                    if (uidOnly)
+                        command = tag + "UID FETCH " + set + " (UID)";
+                    _stream.SendCommand(command);
+                    string temp;
+                    while (!(temp = _stream.ReadLine()).StartsWith(tag))
+                    {
+                        response += (response != string.Empty ? Environment.NewLine : "") + temp;
+                        var match = regex.Match(temp);
+                        if (!match.Success)
+                            continue;
+                        var size = uidOnly ? 0 : long.Parse(match.Groups["size"].Value);
+
+                        //if (match.Groups["uid"].Success)
+                        //    var uid = match.Groups["uid"].Value;
+
+                        //if (match.Groups["flags"].Success)
+                        //    mail.SetFlags(match.Groups["flags"].Value);
+
+                        using (var mem = new MemoryStream())
+                        {
+                            var buffer = new byte[8192];
+                            while (mem.Length < size)
+                            {
+                                var read = _stream.Read(buffer, 0, (int) Math.Min(size - mem.Length, buffer.Length));
+                                mem.Write(buffer, 0, read);
+                            }
+                            var message = Message.DefaultEncoding.GetString(mem.ToArray());
+
+                            // this prevents message array from getting too large
+                            try
+                            {
+                                action(new Message(message, Message.DefaultEncoding,
+                                                   int.Parse(match.Groups["uid"].Value),
+                                                   _selected));
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error("Error in message handler action.", ex);
+                            }
+                        }
+                    }
+
+                    // check fetch status
+                    if (!temp.Contains(tag + "OK"))
+                        throw new Exception("Error reading message.");
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ex is IOException)
+                    _authenticated = _connected = false;
+                Log.Error(string.Format("There was an error getting the message: {0} {1}", uid, response), ex);
+            }
+        }
+
+        private string[] Search(SearchCondition criteria)
+        {
+            try
+            {
+                var tag = GetTag();
+                var command = tag + "UID SEARCH " + criteria;
+                var response = _stream.SendCommand(command).ReadLine();
+                string temp;
+                while (!(temp = _stream.ReadLine()).StartsWith(tag))
+                {
+                    response += Environment.NewLine + temp;
+                }
+
+                var m = Regex.Match(response, @"^\* SEARCH (.*)", RegexOptions.Multiline);
+                return m.Groups[1].Value.Trim().Split(' ').Where(x => !string.IsNullOrEmpty(x)).ToArray();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(string.Format("There was an error searching: {0}", criteria), ex);
+                return new string[0];
+            }
+        }
+
+        private bool Select(string folder)
+        {
+            try
+            {
+                var tag = GetTag();
+                var command = tag + "SELECT " + folder.QuoteString();
+                var response = _stream.SendCommand(command)
+                                      .ReadLine();
+                while (response.StartsWith("*"))
+                {
+                    if (response.StartsWith("* OK"))
+                    {
+                        _selected = folder;
+                        return true;
+                    }
+                    response = _stream.ReadLine();
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ex is IOException)
+                    _authenticated = _connected = false;
+                Log.Error(string.Format("There was an error selecting folder: {0}", folder), ex);
+            }
+            _selected = string.Empty;
+            return false;
+        }
+
+        private bool Connect(ImapParams client)
+        {
+            try
+            {
+                if (_connected)
+                    return true;
+
+                _connection = new TcpClient(client.Host, client.Port);
+                _stream = _connection.GetStream();
+                if (client.Ssl)
+                {
+                    _stream = new SslStream(
+                        _stream,
+                        false,
+                        client.Validate
+                            ? null
+                            : new RemoteCertificateValidationCallback((sender, cert, chain, err) => true));
+                    ((SslStream)_stream).AuthenticateAsClient(client.Host);
+                }
+
+                var response = _stream.ReadLine();
+                _connected = response.StartsWith("* OK");
+                return _connected;
+            }
+            catch (Exception ex)
+            {
+                Log.Error("There was an error connecting to the mail server.", ex);
+                _connected = false;
+                return _connected;
+            }
+        }
+
+        private bool Login(ImapParams client)
+        {
+            try
+            {
+                if (_authenticated)
+                    return true;
+
+                var tag = GetTag();
+                string result;
+
+                switch (_method)
+                {
+                    case AuthMethods.CRAMMD5:
+                        result = _stream.SendCommand(tag + "AUTHENTICATE CRAM-MD5")
+                                        .ReadLine();
+                        // retrieve server key
+                        var key = result.Replace("+ ", "");
+                        key = Encoding.Default.GetString(Convert.FromBase64String(key));
+                        // calcul hash
+                        using (var kMd5 = new HMACMD5(Encoding.ASCII.GetBytes(client.Password)))
+                        {
+                            var hash1 = kMd5.ComputeHash(Encoding.ASCII.GetBytes(key));
+                            key = BitConverter.ToString(hash1).ToLower().Replace("-", "");
+                            result =
+                                _stream.SendCommand(
+                                    Convert.ToBase64String(Encoding.ASCII.GetBytes(client.Username + " " + key)))
+                                       .ReadLine();
+                        }
+                        break;
+
+                    case AuthMethods.Login:
+                        result =
+                            _stream.SendCommand(tag + "LOGIN " + client.Username.QuoteString() + " " +
+                                                client.Password.QuoteString())
+                                   .ReadLine();
+                        break;
+
+                    case AuthMethods.SaslOAuth:
+                        result = _stream.SendCommand(tag + "AUTHENTICATE XOAUTH " + client.Password)
+                                        .ReadLine();
+                        break;
+
+                    default:
+                        throw new NotSupportedException();
+                }
+
+                if (result.StartsWith("* CAPABILITY "))
+                {
+                    _capabilities = result.Substring(13).Trim().Split(' ');
+                    result = _stream.ReadLine();
+                }
+
+                if (!result.StartsWith(tag + "OK"))
+                {
+                    throw new Exception(result);
+                }
+
+                _authenticated = true;
+                return _authenticated;
+            }
+            catch (Exception ex)
+            {
+                if (ex is IOException)
+                    _connected = false;
+                Log.Error("There was an error logging in.", ex);
+                _authenticated = false;
+                return _authenticated;
+            }
+        }
+
+        private string GetTag()
+        {
+            _tag++;
+            return string.Format("xm{0:000} ", _tag);
+        }
+
+        public void Dispose()
+        {
+            _closing = true;
+            Logout();
+        }
+
+        private void Logout()
+        {
+            if (!_connected || !_authenticated)
+                return;
+
+            var tag = GetTag();
+            _stream.SendCommand(tag + "LOGOUT");
+        }
+    }
+}

@@ -1,0 +1,31 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Files.Activities;
+using Life.Utilities;
+
+namespace Files.Triggers
+{
+    public class Audited : Trigger
+    {
+        private Regex[] _matches;
+        private bool _any;
+
+        public Audited(Life.Trigger trigger, Regex[] matches, bool any = true) : base(trigger)
+        {
+            _matches = matches;
+            _any = any;
+
+            AuditFiles.Audited += Resulted;
+            Search.Found += Resulted;
+        }
+
+        private void Resulted(Filesystem file)
+        {
+            OnTriggered(file);
+        }
+    }
+}

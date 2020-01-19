@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ordesignerObjectsDiagram dslVersion="1.0.0.0" absoluteBounds="0, 0, 11, 8.5" name="Datalayer">
+  <DataContextMoniker Name="/DatalayerDataContext" />
+  <nestedChildShapes>
+    <classShape Id="881512a9-c232-4f0a-984c-b9a6b06fadd7" absoluteBounds="0.75, 0.75, 2, 1.3862939453125">
+      <DataClassMoniker Name="/DatalayerDataContext/TrillianSession" />
+      <nestedChildShapes>
+        <elementListCompartment Id="e4e13c36-43ef-4e0f-a240-0c3d13b07b1c" absoluteBounds="0.765, 1.21, 1.9700000000000002, 0.8262939453125" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="d7ac9011-3df4-421c-9bb2-e133b7cad472" absoluteBounds="3.75, 0.75, 2, 1.7708968098958331">
+      <DataClassMoniker Name="/DatalayerDataContext/TrillianMessage" />
+      <nestedChildShapes>
+        <elementListCompartment Id="2b3c0ac6-25ef-4fe7-8b1d-57a850a61c89" absoluteBounds="3.765, 1.21, 1.9700000000000002, 1.2108968098958333" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+  </nestedChildShapes>
+</ordesignerObjectsDiagram>

@@ -1,0 +1,6 @@
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\ExpressionSerialization\bin\Debug\ExpressionSerialization.dll.config
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\ExpressionSerialization\bin\Debug\ExpressionSerialization.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\ExpressionSerialization\bin\Debug\ExpressionSerialization.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\ExpressionSerialization\obj\Debug\ExpressionSerialization.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\ExpressionSerialization\obj\Debug\ExpressionSerialization.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\ExpressionSerialization\obj\Debug\ExpressionSerialization.pdb

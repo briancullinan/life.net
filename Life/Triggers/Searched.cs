@@ -1,0 +1,63 @@
+﻿using System;
+using System.ComponentModel;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Threading;
+
+namespace Life.Triggers
+{
+    public class Searched : Utilities.Trigger
+    {
+
+        public Searched(Trigger trigger) : base(trigger)
+        {
+
+        }
+
+        private void Search_Click(object sender, PropertyChangedEventArgs propertyChangedEventArgs)
+        {
+            var main = ((MainWindow) System.Windows.Application.Current.MainWindow);
+            var text = main.SearchText.Text;
+            //main.Navigator.Children.Add(results);
+            //main.Navigator.SelectedContentIndex = main.Documents.IndexOf(results);
+            OnTriggered(text);
+            foreach (var activityTrigger in Entity.ActivityTriggers)
+            {
+                Utilities.Activity activity;
+                if ((activity = App.Activities.FirstOrDefault(x => x.Entity.Id == activityTrigger.ActivityId)) != null)
+                    activity.Resulted += ActivityOnResulted;
+            }
+        }
+
+        private void ActivityOnResulted(Utilities.Activity activity, object result)
+        {
+            if (!System.Windows.Application.Current.CheckAccess())
+            {
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(
+                    (Action<Utilities.Activity, object>) ActivityOnResulted,
+                    DispatcherPriority.ApplicationIdle,
+                    activity,
+                    result);
+                return;
+            }
+            var main = ((MainWindow) System.Windows.Application.Current.MainWindow);
+            FrameworkElement entity;
+            var func = result as Func<FrameworkElement>;
+            if (func != null)
+            {
+                entity = func.Invoke();
+            }
+            else
+            {
+                entity = result as FrameworkElement ?? new ContentPresenter
+                    {
+                        Content = result,
+                        DataContext = result
+                    };
+            }
+            main.Results.Items.Add(entity);
+            //main.Navigator.Children.Add(entity);
+        }
+    }
+}

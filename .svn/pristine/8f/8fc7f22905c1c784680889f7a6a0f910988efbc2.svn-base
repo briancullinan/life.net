@@ -1,0 +1,130 @@
+﻿using System;
+using System.ComponentModel;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Threading;
+using GraphSharp.Algorithms.Layout;
+using GraphSharp.Algorithms.Layout.Simple.Tree;
+using GraphSharp.Controls;
+using QuickGraph;
+
+namespace Life.Controls
+{
+    /// <summary>
+    /// Interaction logic for Activity.xaml
+    /// </summary>
+    public partial class Activity
+    {
+        private readonly BidirectionalGraph<object, IEdge<object>> _internal = new BidirectionalGraph<object, IEdge<object>>();
+
+        public Activity()
+        {
+            InitializeComponent();
+
+            // check for triggers
+            foreach (var trigger in App.Triggers)
+                trigger.Triggered += Triggered;
+            foreach (var activity in App.Activities)
+                activity.PropertyChanged += ActivityOnPropertyChanged;
+            App.Triggers.CollectionChanged += (sender, args) =>
+                {
+                    if (args.NewItems != null)
+                        foreach (var trigger in args.NewItems.OfType<Utilities.Trigger>())
+                            trigger.Triggered += Triggered;
+                };
+            App.Activities.CollectionChanged += (sender, args) =>
+                {
+                    if (args.NewItems != null)
+                        foreach (var activity in args.NewItems.OfType<Utilities.Activity>())
+                            activity.PropertyChanged += ActivityOnPropertyChanged;
+                };
+        }
+
+        private void ActivityOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            var activity = sender as Utilities.Activity;
+            if (activity != null && e.PropertyName == "Resulted")
+            {
+                Dispatcher.BeginInvoke((Action) (() =>
+                    {
+                        _internal.AddVertex(activity);
+                        var results = activity.Result;
+                        var history = activity.ResultHistory.Except(results);
+                        var oldItems =
+                            _internal.Vertices.OfType<Utilities.Trigger>()
+                                     .Where(x => !results.Contains(x) && !history.Contains(x))
+                                     .ToList();
+                        var newItems = activity.ResultHistory.Where(x => !_internal.Vertices.Contains(x))
+                                               .ToList();
+                        foreach (var newItem in newItems)
+                            _internal.AddVertex(newItem);
+                        foreach(var result in results)
+                            _internal.AddEdge(new Edge<object>(activity, result));
+                    }), DispatcherPriority.ApplicationIdle);
+            }
+        }
+
+        private void Triggered(Utilities.Trigger trigger, object result)
+        {
+            // refresh recent list
+            Dispatcher.BeginInvoke((Action)(() =>
+                {
+                    using (var data = new DatalayerDataContext())
+                    {
+                        var onGoing = data.ActivityQueues
+                                        .Where(x => x.TimeStarted >= App.Start && x.TimeCompleted == null &&
+                                                    x.TimeAdded >= App.Start)
+                                        .ToList();
+                        var activities =
+                            onGoing.Select(x => App.Activities.First(y => y.Entity.Id == x.ActivityId))
+                                 .ToList();
+                        var oldItems =
+                            Ongoing.Children.OfType<ContentPresenter>()
+                                   .Where(x => !activities.Contains(x.Content))
+                                   .ToList();
+                        var newItems = activities.Where(x => !Ongoing.Children
+                                                                     .OfType<ContentPresenter>()
+                                                                     .Select(y => y.Content).Contains(x))
+                                                 .ToList();
+                        foreach(var old in oldItems)
+                            Ongoing.Children.Remove(old);
+                        foreach (var newItem in newItems)
+                            Ongoing.Children.Add(new ContentPresenter
+                                {
+                                    Content = newItem,
+                                    Margin = new Thickness(5)
+                                });
+                    }
+                }), DispatcherPriority.ApplicationIdle);
+        }
+
+        private void Parameters_OnClick(object sender, RoutedEventArgs e)
+        {
+            ((MainWindow)Application.Current.MainWindow).PropertyGrid.SelectedObject = ((Border)sender).DataContext;
+
+            ((MainWindow)Application.Current.MainWindow).PropertyGrid.PropertyDefinitions.Clear();
+            var trigger = ((Border)sender).DataContext as Utilities.Trigger;
+            if (trigger != null)
+            {
+                foreach (var prop in trigger.Properties)
+                    ((MainWindow)Application.Current.MainWindow).PropertyGrid.PropertyDefinitions.Add(prop);
+            }
+
+            var activity = ((Border)sender).DataContext as Utilities.Activity;
+            if (activity == null) return;
+            foreach (var prop in activity.Properties)
+                ((MainWindow)Application.Current.MainWindow).PropertyGrid.PropertyDefinitions.Add(prop);
+        }
+
+        private void InternalGraph_Loaded(object sender, RoutedEventArgs e)
+        {
+            InternalGraph.LayoutParameters = new SimpleTreeLayoutParameters
+            {
+                Direction = LayoutDirection.LeftToRight
+            };
+            InternalGraph.Graph = _internal;
+            InternalGraph.Relayout();
+        }
+    }
+}

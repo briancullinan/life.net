@@ -1,0 +1,272 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace Email
+{
+    public static class Utilities
+    {
+        private static readonly CultureInfo EnUsCulture = CultureInfo.GetCultureInfo("en-US");
+
+        private static readonly Regex RxTimeZoneName = new Regex(@"\s+\([a-z]+\)$", RegexOptions.Compiled | RegexOptions.IgnoreCase); //Mon, 28 Feb 2005 19:26:34 -0500 (EST)
+        private static readonly Regex RxTimeZoneColon = new Regex(@"\s+(\+|\-)(\d{1,2})\D(\d{2})$", RegexOptions.Compiled | RegexOptions.IgnoreCase); //Mon, 28 Feb 2005 19:26:34 -0500 (EST)
+        private static readonly Regex RxTimeZoneMinutes = new Regex(@"([\+\-]?\d{1,2})(\d{2})$", RegexOptions.Compiled); //search can be strict because the format has already been normalized
+        private static readonly Regex RxNegativeHours = new Regex(@"(?<=\s)\-(?=\d{1,2}\:)", RegexOptions.Compiled);
+
+        public static string ReadLine(this Stream stream)
+        {
+            if (stream.CanTimeout)
+                stream.ReadTimeout = 10000;
+
+            lock(stream)
+                using (var mem = new MemoryStream())
+                {
+                    while (true)
+                    {
+                        var b = (byte)stream.ReadByte();
+                        if ((b == 10 || b == 13))
+                        {
+                            if (mem.Length > 0 && b == 10)
+                            {
+                                return Encoding.Default.GetString(mem.ToArray());
+                            }
+                        }
+                        else
+                        {
+                            mem.WriteByte(b);
+                        }
+                    }
+                }
+        }
+
+        public static Stream SendCommand(this Stream stream, string command)
+        {
+            lock (stream)
+            {
+                var bytes = Encoding.Default.GetBytes(command + "\r\n");
+                stream.Write(bytes, 0, bytes.Length);
+                return stream;
+            }
+        }
+
+        public static string QuoteString(this string value)
+        {
+            return "\"" + value
+                              .Replace("\\", "\\\\")
+                              .Replace("\r", "\\r")
+                              .Replace("\n", "\\n")
+                              .Replace("\"", "\\\"") + "\"";
+        }
+
+        internal static string DecodeWords(string encodedWords)
+        {
+            if (string.IsNullOrEmpty(encodedWords))
+                return string.Empty;
+
+            var decodedWords = encodedWords;
+
+            // Notice that RFC2231 redefines the BNF to
+            // encoded-word := "=?" charset ["*" language] "?" encoded-text "?="
+            // but no usage of this BNF have been spotted yet. It is here to
+            // ease debugging if such a case is discovered.
+
+            // This is the regex that should fit the BNF
+            // RFC Says that NO WHITESPACE is allowed in this encoding, but there are examples
+            // where whitespace is there, and therefore this regex allows for such.
+            const string STR_REG_EX = @"\=\?(?<Charset>\S+?)\?(?<Encoding>\w)\?(?<Content>.+?)\?\=";
+            // \w	Matches any word character including underscore. Equivalent to "[A-Za-z0-9_]".
+            // \S	Matches any nonwhite space character. Equivalent to "[^ \f\n\r\t\v]".
+            // +?   non-gready equivalent to +
+            // (?<NAME>REGEX) is a named group with name NAME and regular expression REGEX
+
+            var matches = Regex.Matches(encodedWords, STR_REG_EX);
+            foreach (Match match in matches)
+            {
+                // If this match was not a success, we should not use it
+                if (!match.Success)
+                    continue;
+
+                var fullMatchValue = match.Value;
+
+                var encodedText = match.Groups["Content"].Value;
+                var encoding = match.Groups["Encoding"].Value;
+                var charset = match.Groups["Charset"].Value;
+
+                // Get the encoding which corrosponds to the character set
+                var charsetEncoding = ParseCharsetToEncoding(charset);
+
+                // Store decoded text here when done
+                string decodedText;
+
+                // Encoding may also be written in lowercase
+                switch (encoding.ToUpperInvariant())
+                {
+                    // RFC:
+                    // The "B" encoding is identical to the "BASE64" 
+                    // encoding defined by RFC 2045.
+                    // http://tools.ietf.org/html/rfc2045#section-6.8
+                    case "B":
+                        decodedText = DecodeBase64(encodedText, charsetEncoding);
+                        break;
+
+                    // RFC:
+                    // The "Q" encoding is similar to the "Quoted-Printable" content-
+                    // transfer-encoding defined in RFC 2045.
+                    // There are more details to this. Please check
+                    // http://tools.ietf.org/html/rfc2047#section-4.2
+                    // 
+                    case "Q":
+                        decodedText = DecodeQuotedPrintable(encodedText, charsetEncoding);
+                        break;
+
+                    default:
+                        throw new ArgumentException("The encoding " + encoding + " was not recognized");
+                }
+
+                // Repalce our encoded value with our decoded value
+                decodedWords = decodedWords.Replace(fullMatchValue, decodedText);
+            }
+
+            return decodedWords;
+        }
+
+        /// <summary>
+        //http://www.opensourcejavaphp.net/csharp/openpopdotnet/HeaderFieldParser.cs.html
+        /// Parse a character set into an encoding.
+        /// </summary>
+        /// <param name="characterSet">The character set to parse</param>
+        /// <returns>An encoding which corresponds to the character set</returns>
+        /// <exception cref="ArgumentNullException">If <paramref name="characterSet"/> is <see langword="null"/></exception>
+        public static Encoding ParseCharsetToEncoding(string characterSet)
+        {
+            if (string.IsNullOrEmpty(characterSet))
+                return Message.DefaultEncoding ?? Encoding.Default;
+
+            var charSetUpper = characterSet.ToUpperInvariant();
+            if (charSetUpper.Contains("WINDOWS") || charSetUpper.Contains("CP"))
+            {
+                // It seems the character set contains an codepage value, which we should use to parse the encoding
+                charSetUpper = charSetUpper.Replace("CP", ""); // Remove cp
+                charSetUpper = charSetUpper.Replace("WINDOWS", ""); // Remove windows
+                charSetUpper = charSetUpper.Replace("-", ""); // Remove - which could be used as cp-1554
+
+                // Now we hope the only thing left in the characterSet is numbers.
+                var codepageNumber = int.Parse(charSetUpper, CultureInfo.InvariantCulture);
+
+                return Encoding.GetEncodings().Where(x => x.CodePage == codepageNumber)
+                           .Select(x => x.GetEncoding()).FirstOrDefault() ?? Message.DefaultEncoding ?? Encoding.Default;
+            }
+
+            // It seems there is no codepage value in the characterSet. It must be a named encoding
+            return Encoding.GetEncodings().Where(x => x.Name.Is(characterSet))
+                       .Select(x => x.GetEncoding()).FirstOrDefault() ?? Message.DefaultEncoding ?? Encoding.Default;
+        }
+
+        internal static bool Is(this string input, string other)
+        {
+            return string.Equals(input, other, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string DecodeBase64(string data, Encoding encoding = null)
+        {
+            var bytes = Convert.FromBase64String(data);
+            return (encoding ?? Encoding.Default).GetString(bytes);
+        }
+
+        internal static string DecodeQuotedPrintable(string value, Encoding encoding = null)
+        {
+            if (encoding == null)
+            {
+                encoding = Encoding.Default;
+            }
+
+            value = Regex.Replace(value, @"=[\n\r]+", "");
+
+            var regexObj = new Regex("=([0-9a-fA-F][0-9a-fA-F])=*");
+            var matchResult = regexObj.Match(value);
+            while (matchResult.Success)
+            {
+                var hex = matchResult.Groups[1].Value;
+                var encoded = Enumerable.Range(0, hex.Length / 2).Select(i => (byte)int.Parse(hex.Substring(i * 2, 2), NumberStyles.HexNumber)).ToArray();
+                var replacement = encoding.GetString(encoded).Trim();
+                value = replacement.Contains("\n") 
+                    ? Regex.Replace(value, "\\s*" + matchResult.Value + "\\s*", replacement) 
+                    : value.Replace(matchResult.Value, replacement);
+                matchResult = matchResult.NextMatch();
+            }
+
+            return value;
+        }
+
+        internal static TValue TryGetValue<TKey, TValue>(this Dictionary<TKey, TValue> dictionary, TKey key,
+                                                         TValue @default)
+        {
+            TValue result;
+            return dictionary.TryGetValue(key, out result) ? result : @default;
+        }
+
+        public static IEnumerable<IEnumerable<T>> GroupAdjacentBy<T>(
+            this IEnumerable<T> source, Func<T, T, bool> predicate)
+        {
+            using (var e = source.GetEnumerator())
+            {
+                if (!e.MoveNext()) yield break;
+                var list = new List<T> { e.Current };
+                var pred = e.Current;
+                while (e.MoveNext())
+                {
+                    if (predicate(pred, e.Current))
+                    {
+                        list.Add(e.Current);
+                    }
+                    else
+                    {
+                        yield return list;
+                        list = new List<T> { e.Current };
+                    }
+                    pred = e.Current;
+                }
+                yield return list;
+            }
+        }
+        internal static DateTime? ToNullDate(this string input)
+        {
+            DateTime result;
+            input = NormalizeDate(input);
+            if (DateTime.TryParse(input, EnUsCulture, DateTimeStyles.None, out result))
+            {
+                return result;
+            }
+            return null;
+        }
+
+        private static int ToInt(this string input)
+        {
+            int result;
+            return int.TryParse(input, out result) ? result : 0;
+        }
+
+        private static string NormalizeDate(string value)
+        {
+            value = RxTimeZoneName.Replace(value, string.Empty);
+            value = RxTimeZoneColon.Replace(value, match => " " + match.Groups[1].Value + match.Groups[2].Value.PadLeft(2, '0') + match.Groups[3].Value);
+            value = RxNegativeHours.Replace(value, string.Empty);
+            var minutes = RxTimeZoneMinutes.Match(value);
+            if (minutes.Groups[2].Value.ToInt() > 60)
+            { //even if there's no match, the value = 0
+                value = value.Substring(0, minutes.Index) + minutes.Groups[1].Value + "00";
+            }
+            return value;
+        }
+
+        internal static string GetRFC2060Date(this DateTime date)
+        {
+            return date.ToString("dd-MMM-yyyy hh:mm:ss zz", EnUsCulture);
+        }
+
+    }
+}

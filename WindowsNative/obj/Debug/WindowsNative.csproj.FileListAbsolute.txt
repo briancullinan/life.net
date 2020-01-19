@@ -1,0 +1,5 @@
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\WindowsNative\bin\Debug\WindowsNative.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\WindowsNative\bin\Debug\WindowsNative.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\WindowsNative\obj\Debug\WindowsNative.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\WindowsNative\obj\Debug\WindowsNative.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\WindowsNative\obj\Debug\WindowsNative.pdb

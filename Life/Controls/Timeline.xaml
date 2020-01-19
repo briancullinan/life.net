@@ -1,0 +1,88 @@
+﻿<timeline:TimelineTray x:Class="Life.Controls.Timeline"
+                       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                       xmlns:timeline="clr-namespace:TimelineLibrary;assembly=TimelineLibrary"
+                       mc:Ignorable="d"
+                       d:DesignHeight="300" d:DesignWidth="300"
+                       CalendarType="gregorian"
+                       MinDateTime="01/01/1970"
+                       MaxDateTime="01/01/9999"
+                       CurrentDateTime="Now" MouseWheel="Timeline_OnMouseWheel"
+                       SnapsToDevicePixels="True" UseLayoutRounding="True"
+                       ImmediateDisplay="False">
+
+    <!--<timeline:TimelineTray.Style>
+            <Style TargetType="{x:Type timeline:TimelineTray}" BasedOn="{StaticResource {x:Type timeline:TimelineTray}}">
+                <Setter Property="Background" Value="{x:Static SystemColors.WindowBrush}"></Setter>
+            </Style>
+        </timeline:TimelineTray.Style>-->
+
+    <Grid.RowDefinitions>
+        <RowDefinition Height="*" />
+        <RowDefinition Height="40" />
+        <RowDefinition Height="40" />
+        <RowDefinition Height="40" />
+        <RowDefinition Height="40" />
+        <RowDefinition Height="40" />
+        <RowDefinition Height="40" />
+    </Grid.RowDefinitions>
+
+    <timeline:TimelineBand
+        Grid.Row="0"
+        IsMainBand="True"
+        ItemSourceType="seconds"
+        HorizontalAlignment="Stretch"
+        TimelineWindowSize="15"
+        MaxEventHeight="130" />
+
+    <timeline:TimelineBand
+        Grid.Row="1"
+        IsMainBand="False"
+        ItemSourceType="minutes"
+        HorizontalAlignment="Stretch"
+        TimelineWindowSize="20"
+        MaxEventHeight="4" />
+
+    <timeline:TimelineBand
+        Grid.Row="2"
+        IsMainBand="False"
+        ItemSourceType="hours"
+        HorizontalAlignment="Stretch"
+        TimelineWindowSize="10"
+        MaxEventHeight="4" />
+
+    <timeline:TimelineBand
+        Grid.Row="3"
+        IsMainBand="False"
+        ItemSourceType="days"
+        HorizontalAlignment="Stretch"
+        TimelineWindowSize="20"
+        MaxEventHeight="4" />
+
+    <timeline:TimelineBand
+        Grid.Row="4"
+        IsMainBand="False"
+        ItemSourceType="months"
+        HorizontalAlignment="Stretch"
+        TimelineWindowSize="10"
+        MaxEventHeight="4" />
+
+    <timeline:TimelineBand
+        Grid.Row="5"
+        IsMainBand="False"
+        ItemSourceType="years"
+        HorizontalAlignment="Stretch"
+        TimelineWindowSize="10"
+        MaxEventHeight="4" />
+
+    <timeline:TimelineBand
+        Grid.Row="6"
+        IsMainBand="False"
+        ItemSourceType="decades"
+        HorizontalAlignment="Stretch"
+        TimelineWindowSize="10"
+        MaxEventHeight="4" />
+
+</timeline:TimelineTray>

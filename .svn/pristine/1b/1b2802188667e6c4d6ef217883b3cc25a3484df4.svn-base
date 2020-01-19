@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ordesignerObjectsDiagram dslVersion="1.0.0.0" absoluteBounds="0, 0, 11, 8.5" name="Datalayer">
+  <DataContextMoniker Name="/DatalayerDataContext" />
+  <nestedChildShapes>
+    <classShape Id="a9966bb9-b73c-44f0-bb92-c9527875a5e6" absoluteBounds="7, 2.125, 2, 2.1554996744791666">
+      <DataClassMoniker Name="/DatalayerDataContext/FacebookContact" />
+      <nestedChildShapes>
+        <elementListCompartment Id="667e936f-4c8c-4832-ab63-c16eae53e6c3" absoluteBounds="7.015, 2.585, 1.9700000000000002, 1.5954996744791665" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+  </nestedChildShapes>
+</ordesignerObjectsDiagram>

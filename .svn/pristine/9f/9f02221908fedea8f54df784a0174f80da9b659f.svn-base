@@ -1,0 +1,79 @@
+﻿using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Windows;
+using AvalonDock.Themes;
+using Life.Annotations;
+using TimelineLibrary;
+
+namespace Life
+{
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml
+    /// </summary>
+    public partial class MainWindow : INotifyPropertyChanged
+    {
+        private ObservableCollection<TimelineEvent> _items;
+        private Timer _timer;
+        private Theme _avalonDockTheme = new MetroTheme();
+        public Theme AvalonDockTheme
+        {
+            get
+            {
+                return _avalonDockTheme;
+            }
+
+            set
+            {
+                if (!Equals(_avalonDockTheme, value))
+                {
+                    _avalonDockTheme = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        public ObservableCollection<TimelineEvent> Items
+        {
+            get { return _items; }
+            private set
+            {
+                _items = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            Items = new ObservableCollection<TimelineEvent>();
+            Items.CollectionChanged += (sender, args) => Timeline.ResetEvents(Items.ToList());
+            _timer = new Timer(UpdateTimelineNow, null, 0, 1000);
+        }
+
+        private void UpdateTimelineNow(object state)
+        {
+            Dispatcher.BeginInvoke((Action) (() =>
+                {
+                    if (IsLoaded)
+                        Timeline.CurrentDateTime = DateTime.Now;
+                }));
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvocator]
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            var handler = PropertyChanged;
+            if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void Search_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+    }
+}

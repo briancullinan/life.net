@@ -1,0 +1,225 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using System.Reflection;
+using System.IO;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using System.Net.NetworkInformation;
+using System.Threading;
+using System.Runtime.Remoting.Messaging;
+using System.Configuration;
+using Microsoft.Win32;
+using System.Security;
+using System.Security.Permissions;
+using System.Runtime.InteropServices;
+
+namespace Life
+{
+	public enum MainEvents
+	{
+		ClickSettings,
+		Close
+	}
+
+	public enum MainViews
+	{
+		Files,
+		Settings
+	}
+
+	public partial class Life : Form, Plugins.IPlugin<MainViews,MainEvents>
+	{
+		delegate void HttpServer(int port);
+		static HttpServer _http = new HttpServer(StartHttpListener);
+		static Dictionary<long, HttpListenerContext> _maintain = new Dictionary<long, HttpListenerContext>();
+		static bool http_alive = false;
+		static HttpListener listener;
+		static string resource_path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Resources");
+		static List<int> ports;
+		public Plugins.Dispatch _dispatcher = new Plugins.Dispatch();
+		static Dictionary<string, string> mimes = new Dictionary<string, string>();
+		static string files_html = "";
+
+		public Life()
+		{
+			InitializeComponent();
+
+			this.webBrowser1.ObjectForScripting = _dispatcher;
+			Plugins.Dispatcher.AddTranslator<MainEvents>(Main_Buttons);
+
+			webBrowser1.Navigating += new WebBrowserNavigatingEventHandler(webBrowser1_Navigating);
+			webBrowser1.DocumentCompleted += new System.Windows.Forms.WebBrowserDocumentCompletedEventHandler(webBrowser1_DocumentCompleted);
+			
+			// start http listener
+			IPGlobalProperties ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
+			TcpConnectionInformation[] tcpConnInfoArray = ipGlobalProperties.GetActiveTcpConnections();
+			try
+			{
+				ports = ConfigurationManager.AppSettings["Ports"]
+					.Split(',')
+					.Select(x => Int32.Parse(x))
+					.ToList();
+
+				_http.BeginInvoke(ports[0], new AsyncCallback(ServerCallback), null);
+			}
+			catch(Exception e)
+			{
+				Debug.WriteLine(e);
+				ports = new List<int> { 60 };
+			}
+		}
+
+		static void ServerCallback(IAsyncResult ar)
+		{
+			// inform of dying
+			Debug.WriteLine("The http server has closed.");
+			http_alive = false;
+		}
+
+		static private void StartHttpListener(int port)
+		{
+			listener = new HttpListener();
+			listener.Prefixes.Add("http://127.0.0.1:" + port + "/");
+			Debug.WriteLine("Starting Http Listener on " + "http://127.0.0.1:" + port);
+
+			try
+			{
+				listener.Start();
+				http_alive = true;
+			}
+			catch (Exception e)
+			{
+				if (e is HttpListenerException)
+				{
+					//netsh http add urlacl url=http://127.0.0.1:13453/ user=ARRAKIS\Brian Cullinan
+				}
+				throw e;
+			}
+			while (http_alive)
+			{
+				IAsyncResult result = listener.BeginGetContext(new AsyncCallback(ListenerCallback), listener);
+				result.AsyncWaitHandle.WaitOne();
+			}
+		}
+
+		public static void ListenerCallback(IAsyncResult result)
+		{
+			HttpListener listener = (HttpListener) result.AsyncState;
+			var context = listener.EndGetContext(result);
+			Debug.WriteLine(context.Request.HttpMethod + " " + context.Request.Url);
+			try
+			{
+
+				string file = Path.Combine(resource_path, context.Request.Url.AbsolutePath.Substring(1));
+				if (File.Exists(file))
+				{
+					var finfo = new FileInfo(file);
+					long len = finfo.Length;
+					if (finfo.Extension == ".svg")
+					{
+					}
+					if (mimes.ContainsKey(finfo.Extension))
+						context.Response.ContentType = mimes[finfo.Extension];
+					else if (finfo.Extension.ToLower() == ".js")
+						context.Response.ContentType = "text/javascript";
+					else
+					{
+						RegistryKey key = Registry.ClassesRoot.OpenSubKey(finfo.Extension);
+						context.Response.ContentType = key.GetValue("Content Type", "").ToString();
+					}
+					context.Response.ContentLength64 = len;
+					var input = finfo.OpenRead();
+					Stream output = context.Response.OutputStream;
+					byte[] buffer = new byte[32768];
+					int read;
+					while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+					{
+						output.Write(buffer, 0, read);
+					}
+					input.Close();
+					output.Close();
+				}
+			}
+			catch
+			{
+				context.Response.Close();
+			}
+		}
+
+		static private void ResponseThreadCallback(IAsyncResult ar)
+		{
+			AsyncResult result = (AsyncResult)ar;
+			_maintain.Remove((long)result.AsyncState);
+		}
+
+		void webBrowser1_Navigating(object sender, WebBrowserNavigatingEventArgs e)
+		{
+			Debug.WriteLine(e.Url);
+		}
+
+		private void webBrowser1_DocumentCompleted(object sender, WebBrowserDocumentCompletedEventArgs e)
+		{
+			files_html = webBrowser1.Document.GetElementById("files").InnerHtml;
+			webBrowser1.Document.InvokeScript("destroyFiles");
+			webBrowser1.Document.Body.AppendChild(Render(MainViews.Settings, webBrowser1.Document));
+			webBrowser1.Document.InvokeScript("setupSettings");
+		}
+
+		private void Life_Load(object sender, EventArgs e)
+		{
+			try
+			{
+
+				webBrowser1.Navigate(new Uri("http://127.0.0.1:" + ports[0] + "/Life.htm"));
+			}
+			catch
+			{
+			}
+		}
+
+		private object Main_Buttons(object sender, MainEvents op)
+		{
+			switch (op)
+			{
+				case MainEvents.Close:
+					Close();
+					break;
+				case MainEvents.ClickSettings:
+
+					break;
+			}
+			return false;
+		}
+
+		public HtmlElement Render(MainViews view, HtmlDocument doc)
+		{
+			if(view == MainViews.Files)
+			{
+				var files = doc.CreateElement("DIV");
+				files.Id = "files";
+				files.InnerHtml = files_html;
+				return files;
+			}
+			else if (view == MainViews.Settings)
+			{
+				Services.Services services = new Services.Services();
+				var services_el = services.Render(services.CurrentView, webBrowser1.Document);
+				var settings = doc.CreateElement("DIV");
+				settings.Id = "settings";
+				var services_lbl = doc.CreateElement("label");
+				services_lbl.InnerHtml = "Services:";
+				settings.AppendChild(services_lbl);
+				settings.AppendChild(services_el);
+				return settings;
+			}
+			return null;
+		}
+	}
+}

@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ordesignerObjectsDiagram dslVersion="1.0.0.0" absoluteBounds="0, 0, 11, 8.5" name="Datalayer">
+  <DataContextMoniker Name="/DatalayerDataContext" />
+  <nestedChildShapes>
+    <classShape Id="01dd2b88-38bb-4694-b54d-bdb20e71cc20" absoluteBounds="3, 0.5, 2, 1.1939925130208333">
+      <DataClassMoniker Name="/DatalayerDataContext/ActivityTrigger" />
+      <nestedChildShapes>
+        <elementListCompartment Id="d1ffc345-a0e4-4419-bc71-40ceb30d11d2" absoluteBounds="3.0149999999999997, 0.96, 1.9700000000000002, 0.63399251302083326" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="148d0468-f9d4-4d2a-b2d2-714f2cc543e8" absoluteBounds="0.5, 4.75, 2, 1.5785953776041666">
+      <DataClassMoniker Name="/DatalayerDataContext/Parameter" />
+      <nestedChildShapes>
+        <elementListCompartment Id="59a0afa4-ae66-48ba-b440-f48090653a72" absoluteBounds="0.51499999999999968, 5.21, 1.9700000000000002, 1.0185953776041665" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="21af5be6-3816-41b0-bf3c-ba3632f240a2" absoluteBounds="0.5, 2.125, 2, 1.5785953776041666">
+      <DataClassMoniker Name="/DatalayerDataContext/Trigger" />
+      <nestedChildShapes>
+        <elementListCompartment Id="f4e56bf8-2f94-4d8c-bfc1-5f931c5d8a6e" absoluteBounds="0.51500000000000012, 2.585, 1.9700000000000002, 1.0185953776041665" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(2.5 : 2.125); (3 : 1.69399251302083)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/DatalayerDataContext/Trigger/Trigger_ActivityTrigger" />
+      <nodes>
+        <classShapeMoniker Id="21af5be6-3816-41b0-bf3c-ba3632f240a2" />
+        <classShapeMoniker Id="01dd2b88-38bb-4694-b54d-bdb20e71cc20" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(1.5 : 3.70359537760417); (1.5 : 4.75)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/DatalayerDataContext/Trigger/Trigger_Parameter" />
+      <nodes>
+        <classShapeMoniker Id="21af5be6-3816-41b0-bf3c-ba3632f240a2" />
+        <classShapeMoniker Id="148d0468-f9d4-4d2a-b2d2-714f2cc543e8" />
+      </nodes>
+    </associationConnector>
+    <classShape Id="dca048c0-04f0-4502-9a88-b8dea76fcef3" absoluteBounds="5.375, 4.75, 2, 1.5785953776041666">
+      <DataClassMoniker Name="/DatalayerDataContext/State" />
+      <nestedChildShapes>
+        <elementListCompartment Id="8668da75-f141-4612-82bb-b9ffd60444ac" absoluteBounds="5.39, 5.21, 1.9700000000000002, 1.0185953776041665" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="2a133595-bc36-458c-85d9-9f69e4068568" absoluteBounds="3, 3.75, 2, 1.9631982421875">
+      <DataClassMoniker Name="/DatalayerDataContext/ActivityQueue" />
+      <nestedChildShapes>
+        <elementListCompartment Id="fe47eeb3-09c1-4c3b-9c13-3e6f3851f7f3" absoluteBounds="3.015, 4.21, 1.9700000000000002, 1.4031982421875" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(2.5 : 3.70359537760417); (3 : 3.75)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/DatalayerDataContext/Trigger/Trigger_ActivityQueue" />
+      <nodes>
+        <classShapeMoniker Id="21af5be6-3816-41b0-bf3c-ba3632f240a2" />
+        <classShapeMoniker Id="2a133595-bc36-458c-85d9-9f69e4068568" />
+      </nodes>
+    </associationConnector>
+    <classShape Id="28ee3c01-8152-47dd-8749-6dd61d230328" absoluteBounds="5.375, 2, 2, 1.5785953776041666">
+      <DataClassMoniker Name="/DatalayerDataContext/Activity" />
+      <nestedChildShapes>
+        <elementListCompartment Id="ab79430f-3441-4fc2-9c91-aeff8f95290e" absoluteBounds="5.39, 2.46, 1.9700000000000002, 1.0185953776041665" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(5.375 : 2); (5 : 1.69399251302083)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/DatalayerDataContext/Activity/Activity_ActivityTrigger" />
+      <nodes>
+        <classShapeMoniker Id="28ee3c01-8152-47dd-8749-6dd61d230328" />
+        <classShapeMoniker Id="01dd2b88-38bb-4694-b54d-bdb20e71cc20" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(6.375 : 3.57859537760417); (6.375 : 4.75)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/DatalayerDataContext/Activity/Activity_State" />
+      <nodes>
+        <classShapeMoniker Id="28ee3c01-8152-47dd-8749-6dd61d230328" />
+        <classShapeMoniker Id="dca048c0-04f0-4502-9a88-b8dea76fcef3" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(5.375 : 3.57859537760417); (5 : 3.75)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/DatalayerDataContext/Activity/Activity_ActivityQueue" />
+      <nodes>
+        <classShapeMoniker Id="28ee3c01-8152-47dd-8749-6dd61d230328" />
+        <classShapeMoniker Id="2a133595-bc36-458c-85d9-9f69e4068568" />
+      </nodes>
+    </associationConnector>
+  </nestedChildShapes>
+</ordesignerObjectsDiagram>

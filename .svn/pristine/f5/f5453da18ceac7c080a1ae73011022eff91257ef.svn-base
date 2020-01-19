@@ -1,0 +1,45 @@
+﻿using System;
+using System.Runtime.Serialization;
+using System.Windows;
+using System.Windows.Navigation;
+using System.Windows.Threading;
+
+namespace Life.Triggers
+{
+    public class Application : Utilities.Trigger
+    {
+        [Flags]
+        public enum ApplicationEvent
+        {
+            Started,
+            Stopped,
+            Delayed,
+            Resting
+        }
+
+        public ApplicationEvent Event { get; set; }
+
+        public Application(Trigger trigger, ApplicationEvent @event)
+            : base(trigger)
+        {
+            Event = @event;
+            if ((Event & ApplicationEvent.Started) == ApplicationEvent.Started)
+                System.Windows.Application.Current.Dispatcher.BeginInvoke((Action)(() => OnTriggered(ApplicationEvent.Started)),
+                                                                          DispatcherPriority.ApplicationIdle);
+            if ((Event & ApplicationEvent.Delayed) == ApplicationEvent.Delayed)
+                System.Windows.Application.Current.Dispatcher.BeginInvoke((Action)(() => OnTriggered(ApplicationEvent.Delayed)),
+                                                                          DispatcherPriority.SystemIdle);
+            if ((Event & ApplicationEvent.Stopped) == ApplicationEvent.Stopped)
+                System.Windows.Application.Current.Dispatcher.Invoke(
+                    () => System.Windows.Application.Current.Exit += Stopped);
+        }
+
+        private void Stopped(object sender, ExitEventArgs exitEventArgs)
+        {
+            OnTriggered(ApplicationEvent.Stopped);
+
+            // this can only occur once
+            System.Windows.Application.Current.Exit -= Stopped;
+        }
+    }
+}

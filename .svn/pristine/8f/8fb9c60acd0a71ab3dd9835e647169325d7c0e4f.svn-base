@@ -1,0 +1,300 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Text.RegularExpressions;
+using Life.Utilities;
+using log4net;
+
+namespace Files.Activities
+{
+    public class AuditFiles : Activity
+    {
+        private static readonly ILog Log = LogManager.GetLogger(typeof(AuditFiles));
+        private static readonly List<EventLog> MyNewLog = new List<EventLog>();
+        private readonly string _computer;
+        private readonly IPAddress _listen;
+        private readonly int[] _ports;
+        private readonly AccessMask _mask;
+        // 0b100000000110011111
+
+        [Flags]
+        public enum AccessMask
+        {
+            Unknown = 0x0,
+            Read = 0x1,
+            Create = 0x2,
+
+            Delete = 0x10000,
+            ReadControl = 0x20000,
+            WriteDac = 0x40000,
+            WriteOwner = 0x80000,
+            Synchronize = 0x100000,
+
+            All = 0xFFFFFF
+        }
+
+        public AuditFiles(Life.Activity activity, string computer = null, AccessMask mask = AccessMask.All)
+            : base(activity)
+        {
+            _computer = computer ?? Environment.MachineName;
+            _mask = mask;
+        }
+
+        public AuditFiles(Life.Activity activity, string computer, IPAddress listen = null, int[] ports = null, AccessMask mask = AccessMask.All)
+            : base(activity)
+        {
+            _computer = computer;
+            _ports = ports ?? new[] {60};
+            _listen = listen ?? IPAddress.Any;
+            _mask = mask;
+        }
+
+        public override void Execute(dynamic context)
+        {
+            try
+            {
+                // if there are no settings
+                if (_listen == null && string.IsNullOrEmpty(_computer))
+                    throw new NotImplementedException("Cannot start auditer with no computer name.");
+
+                var newLog = new EventLog("Security", _computer, "File System") { EnableRaisingEvents = true };
+                newLog.EntryWritten += (o, e) => ProcessEntry(e.Entry);
+
+                // maintain referenced to global list
+                MyNewLog.Add(newLog);
+
+                // Enumerate through current log entries
+                foreach (EventLogEntry entry in newLog.Entries)
+                {
+                    ProcessEntry(entry);
+                }
+            }
+            catch (Exception e)
+            {
+                if (e is IndexOutOfRangeException)
+                {
+                    Log.Error("Events purged before loading finished.", e);
+                }
+                else if (e is InvalidOperationException)
+                {
+                    // must need a listener because it isn't windows
+                    InitializeTcpStringListener();
+                }
+                else
+                {
+                    Log.Error("There was an error initializing the event listener.", e);
+                }
+            }
+
+        }
+
+        private void ProcessEntry(EventLogEntry entry)
+        {
+            const int MAX = 0;
+            using (var fsAudit = new FilesystemDataContext())
+            {
+                // Do something with log entries
+                if ((entry.InstanceId != 4656 && entry.InstanceId != 4663) || entry.Index <= MAX) return;
+
+                var events = fsAudit.Filesystems.Where(x => x.EventId == entry.Index);
+                if (events.Any()) return;
+                var log = new Filesystem();
+                var num = AccessMask.Unknown;
+                switch (entry.InstanceId)
+                {
+                    case 4656:
+                        num =
+                            (AccessMask)
+                            Int32.Parse(entry.ReplacementStrings[11].Substring(2), NumberStyles.HexNumber);
+                        break;
+                    case 4663:
+                        num =
+                            (AccessMask)
+                            Int32.Parse(entry.ReplacementStrings[9].Substring(2), NumberStyles.HexNumber);
+                        break;
+                }
+
+                if ((num & _mask) == 0)
+                    return;
+                /*if ((num & (int)AccessCodes.Delete) == (int)AccessCodes.Delete)
+                            log.Type += (log.Type != "" ? "," : "") + "Delete";
+
+                        if ((num & (int)AccessCodes.ReadControl) == (int)AccessCodes.ReadControl || (num & (int)AccessCodes.Read) == (int)AccessCodes.Read)
+                            log.Type += (log.Type != "" ? "," : "") + "Read";
+
+                        if ((num & (int)AccessCodes.WriteDac) == (int)AccessCodes.WriteDac || (num & (int)AccessCodes.WriteOwner) == (int)AccessCodes.WriteOwner)
+                            log.Type += (log.Type != "" ? "," : "") + "Write";
+
+                        if ((num & (int)AccessCodes.Create) == (int)AccessCodes.Create)
+                            log.Type += (log.Type != "" ? "," : "") + "Create";
+                        */
+                log.Filepath = entry.ReplacementStrings[6];
+                log.Time = entry.TimeGenerated.ToUniversalTime();
+                log.EventId = entry.Index;
+                log.Username = entry.ReplacementStrings[2] + "\\" + entry.ReplacementStrings[1];
+                log.AccessMask = num;
+                log.Success = entry.EntryType == EventLogEntryType.SuccessAudit;
+                log.Computer = _computer;
+                fsAudit.Filesystems.InsertOnSubmit(log);
+
+                try
+                {
+                    fsAudit.SubmitChanges();
+                }
+                catch (Exception e)
+                {
+                    Log.Error("Error saving audit entry.", e);
+                }
+            }
+        }
+
+        /// <summary>
+        /// For use with linux audit log
+        /// </summary>
+        private void InitializeTcpStringListener()
+        {
+            if(!_ports.Any())
+                throw new NotImplementedException("Cannot start listener with empty ports.");
+
+            var audits = new Dictionary<decimal, Dictionary<string, string>>();
+
+            try
+            {
+                // TcpListener server = new TcpListener(port);
+                var server = new TcpListener(_listen, _ports[0]);
+
+                // Start listening for client requests.
+                Log.Info("Starting listener on " + _listen + ":" + _ports[0]);
+                server.Start();
+
+                // Buffer for reading data
+                var bytes = new Byte[1024];
+
+                // Enter the listening loop.
+                while (true)
+                {
+                    Log.Info("Waiting for a connection... ");
+
+                    // Perform a blocking call to accept requests.
+                    // You could also user server.AcceptSocket() here.
+                    var client = server.AcceptTcpClient();
+
+                    Log.Info("Connected!");
+
+                    string data = null;
+
+                    // Get a stream object for reading and writing
+                    var stream = client.GetStream();
+
+                    int i;
+
+                    // Loop to receive all the data sent by the client.
+                    while ((i = stream.Read(bytes, 0, bytes.Length)) != 0)
+                    {
+                        // Translate data bytes to a ASCII string.
+                        data += Encoding.ASCII.GetString(bytes, 0, i);
+
+                        // Process the data sent by the client
+                        var lines = data.Split('\n');
+                        if (lines.Length <= 1) continue;
+                        for (var j = 0; j < lines.Length - 1; j++)
+                        {
+                            // remove processesed data
+                            data = data.Substring(lines[j].Length + 1);
+
+                            // read data in to a dictionary
+                            var newData = Regex
+                                .Matches(lines[j], @"((?<key>[a-z0-9]*)=(""((?<value>.*?)(?<!\\)"")|(?<value>[^""\s]+))\s*)", RegexOptions.IgnoreCase)
+                                .Cast<Match>()
+                                .Select(m => new KeyValuePair<string, string>(m.Groups["key"].Value, m.Groups["value"].Value))
+                                .ToDictionary(x => x.Key, x => x.Value);
+
+                            if (!newData.ContainsKey("msg")) continue;
+                            // get key for this data
+                            var key = decimal.Parse(newData["msg"].Replace("audit(", "").Replace(")", "").Replace(":", ""));
+
+                            // interpret path
+                            if (newData.ContainsKey("type") && newData["type"] == "PATH" && newData.ContainsKey("name"))
+                            {
+                                var chars = Enumerable.Range(0, newData["name"].Length / 2)
+                                                      .Select(x => newData["name"].Substring(x * 2, 2))
+                                                      .ToList();
+                                if (chars.Contains("2F"))
+                                {
+
+                                    newData["name"] = String.Concat(chars.Select(cs => (char)Int32.Parse(cs, NumberStyles.HexNumber)));
+                                }
+
+                                newData["mode"] = Enumerable.Range(0, newData["mode"].Length)
+                                                            .Sum(x => Int32.Parse(newData["mode"].Substring(newData["mode"].Length - x - 1, 1)) << (x * 3))
+                                                            .ToString(CultureInfo.InvariantCulture);
+                            }
+
+
+                            // merge to get entire record
+                            if (newData.ContainsKey("type") &&
+                                (newData["type"] == "CWD" || newData["type"] == "PATH" || newData["type"] == "SYSCALL"))
+                            {
+                                if (!audits.ContainsKey(key))
+                                    audits[key] = new Dictionary<string, string>();
+
+                                audits[key] = audits[key]
+                                    .Union(newData.Where(x => !audits[key].ContainsKey(x.Key)))
+                                    .ToDictionary(x => x.Key, x => x.Value);
+                            }
+
+                            // add the record to the datacontext, PATH is the last bit of information
+                            if (!newData.ContainsKey("type") || newData["type"] != "PATH" ||
+                                !audits[key].ContainsKey("syscall") || !audits[key].ContainsKey("name") ||
+                                !audits[key].ContainsKey("cwd")) continue;
+
+                            if (audits[key]["name"].Contains("2003-12-24 Beach"))
+                                Debug.WriteLine(String.Concat(audits[key].Select(x => x.Key + "=" + x.Value + "\n")) + "\n");
+
+                            var log = new Filesystem
+                                {
+                                    Filepath = audits[key]["cwd"] + "/" + audits[key]["name"],
+                                    Time =
+                                        new DateTime(621355968000000000 + Convert.ToInt64(key * 10000000))
+                                            .ToUniversalTime(),
+                                    EventId = decimal.Parse(newData["msg"].Split(':').First()),
+                                    Username = audits[key]["uid"],
+                                    AccessMask = (AccessMask)int.Parse(newData["mode"]),
+                                    Success = true,
+                                    Computer = audits[key]["node"]
+                                };
+                            using (var fsAudit = new FilesystemDataContext())
+                            {
+                                fsAudit.Filesystems.InsertOnSubmit(log);
+
+                                try
+                                {
+                                    fsAudit.SubmitChanges();
+                                }
+                                catch (Exception ex)
+                                {
+                                    Log.Error("There was an error adding the file audit entry.", ex);
+                                }
+                            }
+
+                            audits.Remove(key);
+                        }
+                    }
+
+                    // Shutdown and end connection
+                    client.Close();
+                }
+            }
+            catch (SocketException ex)
+            {
+                Log.Error("SocketException: {0}", ex);
+            }
+
+        }
+    }
+}

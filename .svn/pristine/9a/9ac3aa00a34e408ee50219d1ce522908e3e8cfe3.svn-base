@@ -1,0 +1,107 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Threading;
+using System.Windows;
+using System.Windows.Markup;
+using System.Xml;
+using log4net;
+using Expression = System.Linq.Expressions.Expression;
+
+namespace Life.Utilities
+{
+    public abstract class Plugin
+    {
+        private static readonly ILog Log = LogManager.GetLogger(typeof(Plugin));
+        public delegate void ItemsLoadedCallback(IEnumerable<object> items);
+        private class GetItemsArgs
+        {
+            public GetItemsArgs(DateTime time, ItemsLoadedCallback callback)
+            {
+                Time = time;
+                Callback = callback;
+            }
+
+            public DateTime Time { get; private set; }
+            public ItemsLoadedCallback Callback { get; private set; }
+        }
+
+        protected Plugin()
+        {
+
+        }
+
+        abstract public string Name { get; }
+
+        public bool GetItemsNear(DateTime time, ItemsLoadedCallback callback)
+        {
+            try
+            {
+                var args = new GetItemsArgs(time, callback);
+                var loader = new Thread(Start);
+                loader.Start(args);
+                return true;
+            }
+            catch(Exception ex)
+            {
+                Log.Error("An error occurred getting items.", ex);
+                return false;
+            }
+        }
+
+        private void Start(object o)
+        {
+            var args = o as GetItemsArgs;
+            if (args != null)
+            {
+                var items = GetItemsNear(args.Time);
+                args.Callback.Invoke(items);
+            }
+        }
+
+        protected abstract IEnumerable<object> GetItemsNear(DateTime time);
+    }
+
+    public abstract class Plugin<T> : Plugin
+    {
+        sealed protected override IEnumerable<object> GetItemsNear(DateTime time)
+        {
+            var items = GetItemsNearT(time);
+            //if(items.Expression.Type == )
+            if (items.Expression.NodeType == ExpressionType.Call &&
+                ((MethodCallExpression)items.Expression).Method.Name == "Select" &&
+                ((MethodCallExpression)items.Expression).Method.DeclaringType == typeof(Queryable) &&
+                ((MethodCallExpression)items.Expression).Arguments.Count == 2 &&
+                ((MethodCallExpression)items.Expression).Arguments[0].NodeType == ExpressionType.Call)
+            {
+                var query = (MethodCallExpression) ((MethodCallExpression) items.Expression).Arguments[0];
+                var executed = (IEnumerable<object>)Expression.Lambda(query).Compile().DynamicInvoke();
+                var result = new List<object>();
+                Application.Current.Dispatcher.Invoke((Action)(() =>
+                    {
+                        var call = Expression.Call(
+                            ((MethodCallExpression) items.Expression).Method,
+                            Expression.Constant(executed),
+                            ((MethodCallExpression) items.Expression).Arguments[1]);
+                        var final = (IQueryable<T>)Expression.Lambda(call).Compile().DynamicInvoke();
+                        result = final.Select(x => (object)x).ToList();
+                    }));
+                return result;
+            }
+            else
+            {
+                // execute it, serialize, then reload it on the right thread
+                var result = new List<object>();
+                foreach (var item in items)
+                {
+                    var xaml = XamlWriter.Save(item);
+                    Application.Current.Dispatcher.Invoke((Action) (() => result.Add(XmlReader.Create(xaml))));
+                }
+                return result;
+            }
+        }
+
+        protected abstract IQueryable<T> GetItemsNearT(DateTime time);
+    }
+}

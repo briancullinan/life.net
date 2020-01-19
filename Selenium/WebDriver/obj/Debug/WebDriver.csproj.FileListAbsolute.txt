@@ -1,0 +1,6 @@
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Selenium\WebDriver\obj\Debug\WebDriver.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\build\cli\Debug\WebDriver.xml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\build\cli\Debug\WebDriver.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\build\cli\Debug\WebDriver.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Selenium\WebDriver\obj\Debug\WebDriver.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Selenium\WebDriver\obj\Debug\WebDriver.pdb

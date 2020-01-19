@@ -1,0 +1,66 @@
+﻿using System;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Windows;
+using System.Windows.Navigation;
+using System.Windows.Threading;
+
+namespace Life.Triggers
+{
+    public class Application : Utilities.Trigger
+    {
+        [Flags]
+        public enum ApplicationEvent
+        {
+            Started,
+            Stopped,
+            Delayed,
+            Resting,
+            Queued,
+        }
+
+        public ApplicationEvent Event
+        {
+            get { return GetValue<ApplicationEvent>(); }
+            set { SetValue(value); }
+        }
+
+
+        public Application(Trigger trigger, ApplicationEvent @event)
+            : base(trigger)
+        {
+            if ((@event & ApplicationEvent.Started) == ApplicationEvent.Started)
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(
+                    (Action) (() => OnTriggered(ApplicationEvent.Started)),
+                    DispatcherPriority.SystemIdle);
+            if ((@event & ApplicationEvent.Delayed) == ApplicationEvent.Delayed)
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(
+                    (Action) (() => OnTriggered(ApplicationEvent.Delayed)),
+                    DispatcherPriority.SystemIdle);
+            if ((@event & ApplicationEvent.Stopped) == ApplicationEvent.Stopped)
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(
+                    (Action) (() => System.Windows.Application.Current.Exit += Stopped),
+                    DispatcherPriority.SystemIdle);
+
+            if ((@event & ApplicationEvent.Queued) == ApplicationEvent.Queued)
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(
+                    (Action) (() => App.Triggers.ToList().ForEach(x => x.Triggered += XOnTriggered)),
+                    DispatcherPriority.SystemIdle);
+        }
+
+        private void XOnTriggered(Utilities.Trigger trigger, object state)
+        {
+            if (trigger == this)
+                return;
+            OnTriggered(string.Format("The trigger {0} [{1}] was fired.", trigger.Entity.Id, trigger.Entity.Type));
+        }
+
+        private void Stopped(object sender, ExitEventArgs exitEventArgs)
+        {
+            OnTriggered(ApplicationEvent.Stopped);
+
+            // this can only occur once
+            System.Windows.Application.Current.Exit -= Stopped;
+        }
+    }
+}

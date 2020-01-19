@@ -1,0 +1,98 @@
+﻿using System;
+using System.ComponentModel;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Windows;
+using Life.Annotations;
+
+namespace Life.Utilities
+{
+    public abstract class Trigger : INotifyPropertyChanged
+    {
+        private readonly Life.Trigger _trigger;
+        private FrameworkElement _settings;
+        private string _inAddition;
+
+        protected Trigger(Life.Trigger trigger)
+        {
+            _trigger = trigger;
+        }
+
+        public delegate void TriggerHandler(Trigger trigger, dynamic state);
+
+        public event TriggerHandler Triggered;
+
+        public Life.Trigger Entity
+        {
+            get { return _trigger; }
+        }
+
+        public FrameworkElement Settings
+        {
+            get { return _settings; }
+            protected set
+            {
+                _settings = value;
+                OnPropertyChanged();
+                var notify = _settings as INotifyPropertyChanged;
+                if(notify != null)
+                    notify.PropertyChanged += Save;
+            }
+        }
+
+        private void Save(object sender, PropertyChangedEventArgs args)
+        {
+            var prop = args.PropertyName.ToLowerInvariant();
+        
+            // check if any constructors contain the name that changed
+            var constructors = GetType()
+                .GetConstructors()
+                .Where(x => x.GetParameters().Any(y => y.Name.ToLowerInvariant() == prop));
+            if (constructors.Any()) return;
+
+            // it changed so save the entity with the new value
+            using (var data = new DatalayerDataContext())
+            {
+                var param = data.Parameters.FirstOrDefault(
+                    x => x.TriggerId == Entity.Id && x.Name == args.PropertyName)
+                            ?? new Parameter
+                                {
+                                    TriggerId = Entity.Id,
+                                    Name = args.PropertyName
+                                };
+
+            }
+        }
+
+        public string Description
+        {
+            get
+            {
+                var parameters = Parameters.Get(Entity, GetType());
+                var result = string.Join("\n", parameters.Select(x => string.Format("{0} [{1}]", x, x.GetType())));
+                result += _inAddition;
+                return result;
+            }
+            protected set
+            {
+                _inAddition = value;
+                OnPropertyChanged();
+            }
+        }
+
+        protected void OnTriggered(dynamic state)
+        {
+            if (Triggered != null)
+                Triggered(this, state);
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvocator]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            var handler = PropertyChanged;
+            if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+}

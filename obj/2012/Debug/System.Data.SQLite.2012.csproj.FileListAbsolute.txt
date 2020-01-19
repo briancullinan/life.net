@@ -1,0 +1,10 @@
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\sqlite3.def
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\sqlite3.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\System.Data.SQLite.xml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\System.Data.SQLite.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\System.Data.SQLite.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\obj\2012\Debug\System.Data.SQLite.2012.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\obj\2012\Debug\System.Data.SQLite.SR.resources
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\obj\2012\Debug\System.Data.SQLite.2012.csproj.GenerateResource.Cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\obj\2012\Debug\System.Data.SQLite.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\obj\2012\Debug\System.Data.SQLite.pdb

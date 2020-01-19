@@ -1,0 +1,63 @@
+﻿using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Windows;
+using Life.Annotations;
+
+namespace Life.Utilities
+{
+    public abstract class Activity
+    {
+        private readonly Life.Activity _activity;
+        private FrameworkElement _settings;
+        private string _inAddition;
+
+        protected Activity(Life.Activity activity)
+        {
+            _activity = activity;
+        }
+
+        public Life.Activity Entity
+        {
+            get { return _activity; }
+        }
+
+        public string Description
+        {
+            get
+            {
+                var parameters = Parameters.Get(Entity, GetType());
+                var result = string.Join("\n", parameters.Select(x => string.Format("{0} [{1}]", x, x.GetType())));
+                result += _inAddition;
+                return result;
+            }
+            protected set
+            {
+                _inAddition = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public FrameworkElement Settings
+        {
+            get { return _settings; }
+            protected set
+            {
+                _settings = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public abstract void Execute(dynamic context);
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvocator]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            var handler = PropertyChanged;
+            if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+}

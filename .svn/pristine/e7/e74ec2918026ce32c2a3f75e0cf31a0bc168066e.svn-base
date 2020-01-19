@@ -1,0 +1,412 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters;
+using System.Runtime.Serialization.Formatters.Soap;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Xml.Serialization;
+using log4net;
+
+namespace Life
+{
+    /// <summary>
+    /// Interaction logic for App.xaml
+    /// </summary>
+    public partial class App
+    {
+        #region "Fields"
+        private static readonly ILog Log = LogManager.GetLogger(typeof(App));
+        private static List<Utilities.Trigger> _triggers;
+        private static List<Assembly> _assemblies;
+        private static List<Utilities.Activity> _activities;
+        //private static readonly PerformanceCounter CpuCounter;
+        //private static readonly PerformanceCounter RamCounter;
+        //private static ManualResetEvent _loading = new ManualResetEvent(true);
+        #endregion
+
+        #region "Properties"
+        public static IEnumerable<Assembly> Plugins
+        {
+            get
+            {
+                if (_assemblies == null)
+                    Load_Assemblies();
+                return _assemblies;
+            }
+        }
+
+        public static IEnumerable<Utilities.Activity> Activities
+        {
+            get
+            {
+                if (_activities == null)
+                    Load_Activities();
+                return _activities;
+            }
+        }
+
+        public static IEnumerable<Utilities.Trigger> Triggers
+        {
+            get
+            {
+                if (_triggers == null)
+                    Load_Triggers();
+                return _triggers;
+            }
+        }
+        #endregion
+
+        #region "Loading"
+
+        private static void Load_Assemblies()
+        {
+            // loop through each group box an load the plugins
+            if (_assemblies != null) return;
+            _assemblies = new List<Assembly>
+                {
+                    Assembly.GetExecutingAssembly()
+                };
+            var assemblyLoc = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
+            if (!Directory.Exists(Path.Combine(assemblyLoc, "Plugins"))) return;
+            var pluginsDir = Directory.GetFiles(Path.Combine(assemblyLoc, "Plugins"));
+            foreach (var dll in pluginsDir.Where(dll => Path.GetExtension(dll) == ".dll"))
+            {
+                try
+                {
+                    var plugin = Assembly.LoadFrom(dll);
+                    _assemblies.Add(plugin);
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(string.Format("There was an error loading the plugin: {0}", dll), ex);
+                }
+            }
+        }
+
+        /*private static void Load_Plugins()
+        {
+            // loop through each group box an load the plugins
+            if (_plugins != null) return;
+            _plugins = new List<Utilities.Plugin>();
+            foreach (var plugin in Assemblies)
+            {
+                try
+                {
+                    var pluginTypes = plugin.GetTypes().Where(x => typeof(Utilities.Plugin).IsAssignableFrom(x)).ToList();
+                    foreach (var instance in pluginTypes.Select(type => (Utilities.Plugin)Activator.CreateInstance(type)))
+                    {
+                        _plugins.Add(instance);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(string.Format("There was an error loading the plugin: {0}", plugin.FullName), ex);
+                }
+            }
+        }
+        */
+
+        private static void Load_Triggers()
+        {
+            if (_triggers != null) return;
+            _triggers = new List<Utilities.Trigger>();
+            if (_assemblies == null) Load_Assemblies();
+            var savedTriggers = new DatalayerDataContext().Triggers;
+            foreach (var trigger in savedTriggers)
+            {
+                var type = Type.GetType(trigger.Type);
+                var assembly = Plugins.FirstOrDefault(x => (type = x.GetType(trigger.Type)) != null);
+                if (type != null && assembly != null && typeof(Utilities.Trigger).IsAssignableFrom(type))
+                {
+                    var args = GetParameters(trigger, type);
+                    var newTrigger = (Utilities.Trigger)Activator.CreateInstance(type, args);
+                    newTrigger.Triggered += Triggered;
+                    _triggers.Add(newTrigger);
+                }
+                else
+                    Log.Error(string.Format("There was an error creating the trigger: {0} : {1}", trigger.Id,
+                                            trigger.Type));
+            }
+        }
+
+        private static void Load_Activities()
+        {
+            if (_activities != null) return;
+            _activities = new List<Utilities.Activity>();
+            // load assemblies
+            if(_assemblies == null) Load_Assemblies();
+            // loop through each activity and instantiate
+            var savedActivites = new DatalayerDataContext().Activities;
+            foreach (var activity in savedActivites)
+            {
+                var type = Type.GetType(activity.Type);
+                var assembly = Plugins.FirstOrDefault(x => (type = x.GetType(activity.Type)) != null);
+                if (type != null && assembly != null && typeof(Utilities.Activity).IsAssignableFrom(type))
+                {
+                    var args = GetParameters(activity, type);
+                    var newActivity = (Utilities.Activity)Activator.CreateInstance(type, args);
+                    _activities.Add(newActivity);
+                }
+                else
+                    Log.Error(string.Format("There was an error creating the activity: {0} : {1}", activity.Id,
+                                            activity.Type));
+            }
+        }
+
+        #endregion
+
+        private static void Triggered(Utilities.Trigger trigger, dynamic state)
+        {
+            // queue the trigger for processing
+            var context = new DatalayerDataContext();
+            var activityTriggers = trigger.Entity.ActivityTriggers
+                                          .Select(x => Activities
+                                                           .FirstOrDefault(y => y.Entity.Id == x.ActivityId))
+                                          .Where(x => x != null)
+                                          .ToList();
+            if (!activityTriggers.Any())
+                return;
+
+            // try to serialize state information
+            try
+            {
+                using (var mem = new MemoryStream())
+                {
+                    var serlializer = new SoapFormatter
+                        {
+                            AssemblyFormat = FormatterAssemblyStyle.Full
+                        };
+                    serlializer.Serialize(mem, state);
+                    state = Encoding.Default.GetString(mem.ToArray());
+                    foreach (var activity in activityTriggers)
+                    {
+                        var queue = new ActivityQueue
+                            {
+                                ActivityId = activity.Entity.Id,
+                                State = state
+                            };
+                        context.ActivityQueues.InsertOnSubmit(queue);
+                    }
+                }
+                context.SubmitChanges();
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Error queuing triggered activities.", ex);
+            }
+            ProcessQueue();
+        }
+
+        private static void ProcessQueue()
+        {
+            // check memory usage
+            /*var memStatus = new WinBase.MEMORYSTATUSEX();
+            float installedMemory = 10;
+            if (Kernel32.GlobalMemoryStatusEx(memStatus))
+            {
+                installedMemory = (float)memStatus.ullAvailPhys/memStatus.ullTotalPhys*100;
+            }
+
+            // check network usage
+            const string TEMPFILE = "tempfile.tmp";
+            var webClient = new System.Net.WebClient();
+
+            Console.WriteLine("Downloading file....");
+
+            var sw = Stopwatch.StartNew();
+            webClient.DownloadFile("http://dl.google.com/googletalk/googletalk-setup.exe", TEMPFILE);
+            sw.Stop();
+
+            var fileInfo = new FileInfo(TEMPFILE);
+            var speed = fileInfo.Length / sw.Elapsed.Seconds;
+
+            Console.WriteLine("Download duration: {0}", sw.Elapsed);
+            Console.WriteLine("File size: {0}", fileInfo.Length.ToString("N0"));
+            Console.WriteLine("Speed: {0} bps ", speed.ToString("N0"));
+
+            // check cpu usage
+            if (CpuCounter.NextValue() < 90 &&
+                installedMemory > 10)
+            {
+            */
+            
+            var queue = new DatalayerDataContext();
+            var items = queue.ActivityQueues.Where(x => x.TimeStarted == null && x.TimeCompleted == null).ToList();
+            foreach (var item in items)
+            {
+                var activity = Activities.FirstOrDefault(x => x.Entity.Id == item.ActivityId);
+                if (activity != null)
+                    ThreadPool.QueueUserWorkItem(ExecuteActivity, new QueueParams
+                        {
+                            Activity = activity,
+                            Item = item
+                        });
+            }
+            //}
+        }
+
+        private static void ExecuteActivity(object state)
+        {
+            var @params = state as QueueParams;
+            if (@params == null) return;
+            var context = new DatalayerDataContext();
+
+            try
+            {
+                context.ActivityQueues.First(x => x.Id == @params.Item.Id).TimeStarted = DateTime.UtcNow;
+
+                context.SubmitChanges();
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Error logging start time.", ex);
+            }
+
+            try
+            {
+                var serializer = new SoapFormatter();
+
+                AppDomain.CurrentDomain.AssemblyResolve += LoadComponentAssembly;
+
+                using (var stream = new MemoryStream(Encoding.Default.GetBytes(@params.Item.State)))
+                    @params.Activity.Execute(serializer.Deserialize(stream));
+
+                AppDomain.CurrentDomain.AssemblyResolve -= LoadComponentAssembly;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(
+                    string.Format("An exception occured while executing trigger: {0} {1}", @params.Item.Id,
+                                  @params.Activity.Entity.Type), ex);
+            }
+
+            try
+            {
+                context.ActivityQueues.First(x => x.Id == @params.Item.Id).TimeCompleted = DateTime.UtcNow;
+                // delete old items from queue
+                context.ActivityQueues.DeleteAllOnSubmit(
+                    context.ActivityQueues.Where(x => x.TimeCompleted < DateTime.UtcNow.Subtract(TimeSpan.FromHours(6))));
+                context.SubmitChanges();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(
+                    string.Format("There was an error removing the activity from the queue: {0}",
+                                  @params.Item.Id), ex);
+            }
+            finally
+            {
+                context.Dispose();
+            }
+
+        }
+
+        static App()
+        {
+            ThreadPool.QueueUserWorkItem(state =>
+                {
+                    Load_Activities();
+                    Load_Triggers();
+                });
+
+            //CpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+            //RamCounter = new PerformanceCounter("Memory", "Available MBytes");
+            //diskTransfersPerSec = new PerformanceCounter("PhysicalDisk", "Disk Transfers/sec", "1 G:", "servername");
+        }
+
+
+// Method for event
+
+        private static Assembly LoadComponentAssembly(object sender, ResolveEventArgs args)
+        {
+            return Plugins.First(x => x.FullName == args.Name);
+            var simpleName = args.Name.Substring(0, args.Name.IndexOf(','));
+            var assemblyPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "", "Plugins", simpleName + ".dll");
+            Assembly.LoadFrom(assemblyPath);
+            return Assembly.LoadFrom(assemblyPath);
+        }
+
+        [STAThread]
+        public static void Main()
+        {
+            var app = new App();
+            app.InitializeComponent();
+            app.Run();
+        }
+
+        private static object[] GetParameters(object item, Type type)
+        {
+            // get state information for the current activity or trigger
+            Dictionary<string, string> values;
+            if (item as Trigger != null)
+                values = ((Trigger) item).Parameters.ToDictionary(x => x.Parameter1.ToLowerInvariant(), x => x.Value);
+            else if (item as Activity != null)
+                values = ((Activity) item).States.ToDictionary(x => x.Parameter.ToLowerInvariant(), x => x.Value);
+            else
+                throw new NotImplementedException();
+
+            // put args in right order
+            object[] args = null;
+            var constructors = type.GetConstructors();
+            foreach (var constructor in constructors)
+            {
+                // try to match constructor by name
+                var @params = constructor.GetParameters().ToDictionary(x => x.Name.ToLowerInvariant(), x => x);
+                var argValues = @params.ToDictionary(x => x.Key.ToLowerInvariant(), x => (object) null);
+                argValues = argValues.ToDictionary(x => x.Key.ToLowerInvariant(), x =>
+                    {
+                        try
+                        {
+
+                            // if the type is trigger, insert passed in value
+                            if (@params[x.Key].ParameterType == item.GetType())
+                                return item;
+
+                            // handle missing and optional parameters
+                            if (!values.ContainsKey(x.Key) && @params[x.Key].IsOptional)
+                                return @params[x.Key].DefaultValue;
+                            if (!values.ContainsKey(x.Key) || string.IsNullOrEmpty(values[x.Key]))
+                                return Convert.ChangeType(null, @params[x.Key].ParameterType);
+
+                            // use the value of the key in the database to initialize the object
+                            var value = values[x.Key];
+                            if (@params[x.Key].ParameterType == typeof (string))
+                                return value;
+                            // try parsing all the primitives
+                            if (@params[x.Key].ParameterType.IsEnum)
+                                return Enum.Parse(@params[x.Key].ParameterType, value);
+                            if (@params[x.Key].ParameterType == typeof (bool))
+                                return bool.Parse(value);
+
+                            var serializer = new SoapFormatter();
+                            using (var stream = new MemoryStream(Encoding.ASCII.GetBytes(value)))
+                                return serializer.Deserialize(stream);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(string.Format("There was an error loading the object: {0}", x.Key), ex);
+                            return null;
+                        }
+                    });
+
+                // check if there are any missing variables, must not be the right constructor
+                //if (!argValues.All(x => x.Value != null || @params[x.Key].IsOptional)) continue;
+                args = argValues.Select(x => x.Value).ToArray();
+                break;
+            }
+            return (args ?? new[] {item});
+        }
+
+        private class QueueParams
+        {
+            public Utilities.Activity Activity { get; set; }
+
+            public ActivityQueue Item { get; set; }
+        }
+    }
+}

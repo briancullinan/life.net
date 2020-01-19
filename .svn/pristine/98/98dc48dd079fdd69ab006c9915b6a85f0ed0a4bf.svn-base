@@ -1,0 +1,151 @@
+﻿using System;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Windows;
+using System.Windows.Threading;
+
+namespace Life.Triggers
+{
+    public class Application : Utilities.Trigger
+    {
+        private delegate void SearchedHandler(System.Linq.Expressions.Expression q, Action<object> action);
+
+        private static event SearchedHandler Searched;
+
+        public static readonly DependencyProperty ResultsProperty = DependencyProperty.RegisterAttached(
+            "Results",
+            typeof(ObservableCollection<object>),
+            typeof(Application),
+            new PropertyMetadata(new ObservableCollection<object>()));
+
+
+        public static void SetResults(UIElement element, ObservableCollection<object> value)
+        {
+            element.SetValue(ResultsProperty, value);
+        }
+
+        public static ObservableCollection<object> GetResults(UIElement element)
+        {
+            return (ObservableCollection<object>)element.GetValue(ResultsProperty);
+        }
+
+
+        [Flags]
+        public enum ApplicationEvent : int
+        {
+            Started = 1,
+            Stopped = 2,
+            Delayed = 4,
+            Resting = 8,
+            Queued = 16,
+            Searched = 32
+        }
+
+        public ApplicationEvent Event
+        {
+            get { return GetValue<ApplicationEvent>(); }
+            set { SetValue(value); }
+        }
+        
+        public Application(Trigger trigger, ApplicationEvent @event)
+            : base(trigger)
+        {
+            if ((@event & ApplicationEvent.Started) == ApplicationEvent.Started)
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(
+                    (Action) (() => OnTriggered(ApplicationEvent.Started)),
+                    DispatcherPriority.SystemIdle);
+            if ((@event & ApplicationEvent.Delayed) == ApplicationEvent.Delayed)
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(
+                    (Action) (() => OnTriggered(ApplicationEvent.Delayed)),
+                    DispatcherPriority.SystemIdle);
+            if ((@event & ApplicationEvent.Stopped) == ApplicationEvent.Stopped)
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(
+                    (Action) (() => System.Windows.Application.Current.Exit += Stopped),
+                    DispatcherPriority.SystemIdle);
+
+            if ((@event & ApplicationEvent.Queued) == ApplicationEvent.Queued)
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(
+                    (Action) (() => App.Triggers.ToList().ForEach(x => x.Triggered += XOnTriggered)),
+                    DispatcherPriority.SystemIdle);
+
+            if ((@event & ApplicationEvent.Searched) == ApplicationEvent.Searched)
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(
+                    (Action)(() => { Searched += OnSearched; }),
+                    DispatcherPriority.SystemIdle);
+        }
+
+        private void XOnTriggered(Utilities.Trigger trigger, object state)
+        {
+            if (trigger == this)
+                return;
+            OnTriggered(string.Format("The trigger {0} [{1}] was fired.", trigger.Entity.Id, trigger.Entity.Type));
+        }
+
+        private void Stopped(object sender, ExitEventArgs exitEventArgs)
+        {
+            OnTriggered(ApplicationEvent.Stopped);
+
+            // this can only occur once
+            System.Windows.Application.Current.Exit -= Stopped;
+        }
+
+        public static void OnSearched(DependencyObject sender, System.Linq.Expressions.Expression e)
+        {
+            Action<object> action = obj =>
+                {
+                    var results = (ObservableCollection<object>) sender.GetValue(ResultsProperty);
+                    results.Add(obj);
+                };
+            System.Windows.Application.Current.Dispatcher.BeginInvoke((Action<System.Linq.Expressions.Expression, Action<object>>)((ex, a) =>
+                {
+                    if(Searched != null)
+                        Searched(ex, a);
+                }), DispatcherPriority.SystemIdle, e, action);
+        }
+
+        public void OnSearched(System.Linq.Expressions.Expression e, Action<object> action)
+        {
+            OnTriggered(e);
+            foreach (var activityTrigger in Entity.ActivityTriggers)
+            {
+                Utilities.Activity activity;
+                if ((activity = App.Activities.FirstOrDefault(x => x.Entity.Id == activityTrigger.ActivityId)) != null)
+                    activity.Resulted += (a, result) => ActivityOnResulted(a, result, action);
+            }
+        }
+
+        private void ActivityOnResulted(Utilities.Activity activity, object result, Action<object> action)
+        {
+            if (!System.Windows.Application.Current.CheckAccess())
+            {
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(
+                    (Action<Utilities.Activity, object, Action<object>>)ActivityOnResulted,
+                    DispatcherPriority.ApplicationIdle,
+                    activity,
+                    result,
+                    action);
+                return;
+            }
+
+            action(result);
+            /*
+            FrameworkElement entity;
+            var func = result as Func<FrameworkElement>;
+            if (func != null)
+            {
+                entity = func.Invoke();
+            }
+            else
+            {
+                entity = result as FrameworkElement ?? new ContentPresenter
+                {
+                    Content = result,
+                    DataContext = result
+                };
+            }
+            */
+            //Results.Items.Add(entity);
+            //main.Navigator.Children.Add(entity);
+        }
+    }
+}

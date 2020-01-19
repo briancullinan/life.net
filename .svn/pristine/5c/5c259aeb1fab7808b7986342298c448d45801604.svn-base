@@ -1,0 +1,52 @@
+﻿using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Windows;
+using Life.Annotations;
+
+namespace Life.Utilities
+{
+    public abstract class Trigger : INotifyPropertyChanged
+    {
+        private readonly Life.Trigger _trigger;
+        private FrameworkElement _settings;
+
+        protected Trigger(Life.Trigger trigger)
+        {
+            _trigger = trigger;
+        }
+
+        public delegate void TriggerHandler(Trigger trigger, dynamic state);
+
+        public event TriggerHandler Triggered;
+
+        public Life.Trigger Entity
+        {
+            get { return _trigger; }
+        }
+
+        public FrameworkElement Settings
+        {
+            get { return _settings; }
+            protected set
+            {
+                _settings = value;
+                OnPropertyChanged();
+            }
+        }
+
+        protected void OnTriggered(dynamic state)
+        {
+            if (Triggered != null)
+                Triggered(this, state);
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvocator]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            var handler = PropertyChanged;
+            if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+}

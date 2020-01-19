@@ -1,0 +1,129 @@
+﻿
+html, body 
+{
+	margin:0;
+	padding:0;
+	overflow:hidden;
+}
+
+#status
+{
+	position:absolute;
+}
+
+#heading
+{
+	float:left;
+	margin:20px;
+}
+
+#windowButtons
+{
+	right:0px;
+	top:0px;
+	padding:20px;
+	float:right;
+	opacity:0.50;
+}
+
+#windowButtons > span
+{
+	opacity:0.50;
+}
+
+#closeBtn, #settingsBtn
+{
+	display:block;
+	float:left;
+	height:32px;
+	width:32px;
+	margin:10px;
+}
+
+hr
+{
+	clear:both;
+}
+
+.fill 
+{
+	display:block;
+	clear:both;
+}
+
+#streamer
+{
+	float:left;
+	display:block;
+	height:480px;
+	width:80%;
+	position:relative;
+	margin-left:10%;
+	overflow:visible;
+}
+
+.file
+{
+	display:block;
+	position:absolute;
+}
+
+.file.clone
+{
+	visibility:hidden;
+}
+
+.debug .file.clone
+{
+	visibility:visible;
+}
+
+#the_path
+{
+	width:50px;
+	position:absolute;
+}
+
+#now
+{
+	width:35px;
+	position:absolute;
+	right:0px;
+}
+
+#the_past, #now
+{
+	float:left;
+	padding:10px;
+	height:15px;
+	z-index:2;
+}
+
+#bar
+{
+	float:left;
+	width:100%;
+	height:35px;
+	position:absolute;
+	z-index:0;
+}
+
+#handle
+{
+	height:35px;
+	width:25px;
+	position:absolute;
+	left:50%;
+	margin-left:-12.5px;
+}
+
+#time
+{
+	width:100px;
+	text-align:center;
+	margin-left:-50px;
+	left:50%;
+	margin-top:20px;
+	height:50px;
+	position:absolute;
+}

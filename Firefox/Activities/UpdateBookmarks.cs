@@ -1,0 +1,132 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Life;
+using SQLite;
+using log4net;
+using Activity = Life.Utilities.Activity;
+using Trigger = Life.Utilities.Trigger;
+
+namespace Firefox.Activities
+{
+    public class UpdateBookmarks : Activity
+    {
+        private static readonly ILog Log = LogManager.GetLogger(typeof(UpdateBookmarks));
+        private static DateTime _epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        private readonly string _profile;
+        private readonly bool _sync;
+
+        public UpdateBookmarks(Life.Activity activity, string profile, bool sync = false)
+            : base(activity)
+        {
+            _profile = profile;
+            _sync = sync;
+        }
+
+        private List<moz_bookmarks> GetBookmarks(SQLiteConnection conn = null)
+        {
+            using (var data = new DatalayerDataContext())
+            {
+                var ff = conn;
+                if (conn == null)
+                    ff = new SQLiteConnection(_profile);
+                var latest = default(DateTime?);
+                if (data.Bookmarks.Any())
+                    latest = data.GetTable<Bookmark>().Max(x => x.LastModified);
+
+                var time = latest.HasValue ? (long?)((latest.Value - _epoch).Ticks / 10) : 0;
+                var places = ff.Table<moz_bookmarks>().Where(x => x.lastModified > time).ToList();
+                if (conn == null)
+                    ff.Dispose();
+                return places;
+            }
+        }
+
+        private List<moz_bookmarks> SynchronizeBookmarks()
+        {
+            using (var data = new DatalayerDataContext())
+            {
+                using (var ff = new SQLiteConnection(_profile))
+                {
+                    var places = GetBookmarks(ff);
+                    var existing = data.GetTable<Bookmark>().Select(x => x.Id).ToList();
+                    var past = ff.Table<moz_bookmarks>().Select(x => x.id).ToList();
+                    var except = past.Except(existing)
+                                     .Except(places.Select(x => x.id))
+                                     .ToList();
+                    places =
+                        places.Concat(except
+                                          .Select(x => ff.Table<moz_bookmarks>()
+                                                                    .First(y => y.id == x))
+                                          .ToList())
+                              .ToList();
+                    return places;
+                }
+            }
+        }
+
+        public override void Execute(object context, ActivityQueue queue, Trigger trigger)
+        {
+            lock (_profile)
+                using (var data = new DatalayerDataContext())
+                {
+                    var places = _sync ? SynchronizeBookmarks() : GetBookmarks();
+
+                    using (var ff = new SQLiteConnection(_profile))
+                    {
+                        foreach (var mark in places)
+                        {
+                            var newHistory = data.Bookmarks.FirstOrDefault(x => x.Id == mark.id);
+                            if (newHistory == null)
+                            {
+                                newHistory = new Bookmark
+                                    {
+                                        Id = mark.id,
+                                        Guid = mark.guid,
+                                    };
+                                data.Bookmarks.InsertOnSubmit(newHistory);
+                            }
+                            // check if the last modified date is after the date in the database
+                            else if (mark.lastModified.HasValue &&
+                                     _epoch.AddSeconds(mark.lastModified.Value/1000000.0) <= newHistory.LastModified)
+                                continue;
+                            
+                            var url = string.Empty;
+                            if (mark.fk.HasValue)
+                                url = ff.Table<moz_places>().First(x => x.id == mark.fk.Value).url;
+
+                            var keywords = string.Empty;
+                            if (mark.keyword_id.HasValue)
+                                keywords = ff.Table<moz_keywords>().First(x => x.id == mark.keyword_id.Value).keyword;
+
+                            var lastModified = new DateTime?();
+                            if (mark.lastModified.HasValue)
+                                lastModified = _epoch.AddSeconds(mark.lastModified.Value/1000000.0);
+
+                            var dateAdded = new DateTime?();
+                            if (mark.dateAdded.HasValue)
+                                dateAdded = _epoch.AddSeconds(mark.dateAdded.Value/1000000.0);
+
+                            newHistory.Url = url;
+                            newHistory.DateAdded = dateAdded;
+                            newHistory.LastModified = lastModified;
+                            newHistory.Keywords = keywords;
+                            newHistory.Parent = mark.parent;
+                            newHistory.Position = mark.position;
+                            newHistory.Title = mark.title;
+                            newHistory.Type = mark.type;
+
+                            try
+                            {
+                                data.SubmitChanges();
+                            }
+                            catch (Exception e)
+                            {
+                                Log.Error(e);
+                            }
+                        }
+                    }
+                }
+        }
+    }
+}

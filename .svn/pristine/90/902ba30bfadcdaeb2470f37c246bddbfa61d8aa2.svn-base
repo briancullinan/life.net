@@ -1,0 +1,35 @@
+﻿using System;
+using System.Windows;
+using System.Windows.Threading;
+
+namespace Life.Activities
+{
+    public class UpdateTimeline : Utilities.Activity
+    {
+        private readonly string _dateProperty;
+        private readonly string _titleProperty;
+        private readonly string _descProperty;
+
+        public UpdateTimeline(Activity activity, 
+            string dateProperty = "",
+            string titleProperty = "",
+            string descriptionProperty = "") : base(activity)
+        {
+            _dateProperty = dateProperty;
+            _titleProperty = titleProperty;
+            _descProperty = descriptionProperty;
+        }
+
+        public override void Execute(dynamic context)
+        {
+            if (!Application.Current.Dispatcher.CheckAccess())
+            {
+                Application.Current.Dispatcher.BeginInvoke((Action<dynamic>) Execute,
+                                                           DispatcherPriority.Input, context);
+                return;
+            }
+
+            var element = context as FrameworkElement;
+        }
+    }
+}

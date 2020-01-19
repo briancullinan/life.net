@@ -1,0 +1,363 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Configuration;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.Serialization.Formatters;
+using System.Runtime.Serialization.Formatters.Soap;
+using System.Text;
+using Life.Annotations;
+using Life.Utilities.Extensions;
+using Xceed.Wpf.Toolkit.PropertyGrid;
+using log4net;
+
+namespace Life.Utilities
+{
+    public abstract class Parameters : INotifyPropertyChanged
+    {
+
+        public virtual IEnumerable<PropertyDefinition> Properties
+        {
+            get
+            {
+                var constructors = GetType().GetConstructors();
+                var parameters = constructors.SelectMany(x => x.GetParameters()).DistinctBy(x => x.Name);
+                var types = constructors.SelectMany(x => x.GetParameters()).DistinctBy(x => x.ParameterType);
+                var all = parameters.Union(types).ToList();
+                var props = GetType().GetProperties();
+                var defined = props
+                    .Where(prop => all
+                        .Any(param => prop.PropertyType.IsAssignableFrom(param.ParameterType) &&
+                        prop.Name.ToLowerInvariant().Equals(param.Name.ToLowerInvariant())));
+                return new[]
+                    {
+                        new PropertyDefinition {Name = "Enabled"},
+                        new PropertyDefinition {Name = "Result"}
+                    }
+                    .Union(defined.Select(x => new PropertyDefinition {Name = x.Name}));
+            }
+        }
+
+        private static readonly ILog Log = LogManager.GetLogger(typeof(Parameters));
+
+        internal static object Arg(Life.Trigger item, Type type, string propertyName)
+        {
+            return InternalArgs(item, type, propertyName).First();
+        }
+
+        internal static object[] Args(Life.Trigger item, Type type)
+        {
+            return InternalArgs(item, type);
+        }
+
+        internal static object Arg(Life.Activity item, Type type, string propertyName)
+        {
+            return InternalArgs(item, type, propertyName).First();
+        }
+
+        internal static object[] Args(Life.Activity item, Type type)
+        {
+            return InternalArgs(item, type);
+        }
+
+        private static object[] InternalArgs(object item, Type type, string propertyName = null)
+        {
+            // get state information for the current activity or trigger
+            var values = new Dictionary<string, List<string>>(StringComparer.InvariantCultureIgnoreCase);
+            if (item as Life.Trigger != null)
+                foreach(var x in ((Life.Trigger)item).Parameters)
+                    if (values.ContainsKey(x.Name))
+                        values[x.Name].Add(x.Value);
+                    else
+                        values[x.Name] = new List<string> {x.Value};
+            else if (item as Life.Activity != null)
+                foreach (var x in ((Life.Activity)item).States)
+                    if (values.ContainsKey(x.Name))
+                        values[x.Name].Add(x.Value);
+                    else
+                        values[x.Name] = new List<string> { x.Value };
+            else
+                throw new NotImplementedException();
+
+            // put args in right order
+            Dictionary<string, object> args = null;
+            var matchCount = -1;
+            var constructors = type.GetConstructors();
+
+            // only search the constructors that contain the parameter name
+            if (!string.IsNullOrEmpty(propertyName))
+                constructors = constructors
+                    .Where(x => x.GetParameters().Select(y => y.Name)
+                                 .Contains(propertyName, StringComparer.InvariantCultureIgnoreCase))
+                    .ToArray();
+
+            foreach (var constructor in constructors)
+            {
+                var argCount = 0;
+                var tempArgs = constructor.GetParameters().ToDictionary(x => x.Name, x =>
+                    {
+                        // if the type is trigger, insert passed in value
+                        if (x.ParameterType == item.GetType())
+                            return item;
+
+                        // handle missing and optional parameters
+                        List<string> value;
+                        if (values.TryGetValue(x.Name, out value))
+                            argCount++;
+
+                        if (value == null && x.IsOptional)
+                            return x.DefaultValue;
+                        if (value == null)
+                            return null;
+
+                        // get using type specific conditions
+                        if (x.ParameterType.IsArray)
+                        {
+                            var result = value.Count == 1
+                                       ? InternalGet(x.ParameterType.GetElementType(), value.First())
+                                       : value.Select(y => InternalGet(x.ParameterType.GetElementType(), y)).ToArray();
+                            if (!result.GetType().IsArray)
+                            {
+                                // put it in to an array
+                                var arr = (IList)Activator.CreateInstance(x.ParameterType, new object[] {1});
+                                arr[0] = result;
+                                return arr;
+                            }
+                            return result;
+                        }
+
+                        return InternalGet(x.ParameterType, value.First());
+                    },
+                    StringComparer.InvariantCultureIgnoreCase);
+
+                if (argCount <= matchCount) continue;
+                args = tempArgs;
+                matchCount = argCount;
+            }
+
+            if (string.IsNullOrEmpty(propertyName))
+                return args == null
+                           ? new[] {item}
+                           : args.Select(x => x.Value).ToArray();
+            return args == null ? null : new[] {args[propertyName]};
+        }
+
+        private static object InternalGet(Type paramType, string obj)
+        {
+            try
+            {
+                // handle missing parameters
+                if (string.IsNullOrEmpty(obj))
+                    return paramType.IsValueType ? Activator.CreateInstance(paramType) : Convert.ChangeType(null, paramType);
+
+                // use the value of the key in the database to initialize the object
+                var value = obj;
+
+                // try parsing all the primitives
+                if (paramType == typeof(string))
+                    return value;
+                if (paramType.IsEnum)
+                    return Enum.Parse(paramType, value, true);
+                if (paramType == typeof(bool))
+                    return bool.Parse(value);
+                // TODO: add more primitives here
+
+                var serializer = new SoapFormatter();
+                using (var stream = new MemoryStream(Encoding.ASCII.GetBytes(value)))
+                    return serializer.Deserialize(stream);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(string.Format("There was an error loading the object: {0}", paramType), ex);
+                return null;
+            }
+        }
+
+        internal static void Set(Life.Trigger item, Type type, string propertyName, object obj)
+        {
+            InternalSet(item, type, propertyName, obj);
+        }
+
+        internal static void Set(Life.Activity item, Type type, string propertyName, object obj)
+        {
+            InternalSet(item, type, propertyName, obj);
+        }
+
+        private static void InternalSet(object item, Type type, string propertyName, object obj)
+        {
+            try
+            {
+                var constructor = InternalSelectConstructor(item, type, propertyName);
+                var param =
+                    constructor.GetParameters()
+                               .First(x => x.Name.Equals(propertyName, StringComparison.InvariantCultureIgnoreCase));
+
+                // don't need to save defaults or nulls
+                if (obj == null || (param.IsOptional && param.DefaultValue == obj))
+                {
+                    var trigger = item as Life.Trigger;
+                    if (trigger != null)
+                    {
+                        App.AppContext.Parameters.DeleteAllOnSubmit(
+                            trigger.Parameters.Where(x => x.Name == propertyName));
+                        App.AppContext.SubmitChanges();
+                    }
+                    var activity = item as Life.Activity;
+                    if (activity != null)
+                    {
+                        App.AppContext.States.DeleteAllOnSubmit(
+                            activity.States.Where(x => x.Name == propertyName));
+                        App.AppContext.SubmitChanges();
+                    }
+                    return;
+                }
+
+                // check the type
+                if (param.ParameterType != obj.GetType())
+                    throw new SettingsPropertyWrongTypeException(string.Format("Wrong type for property: {0} [{1}]",
+                                                                               propertyName, obj.GetType()));
+
+                // save arrays as multiple parameters
+                if (param.ParameterType.IsArray)
+                {
+                    foreach (var val in (IList)obj)
+                    {
+                        var value = InternalSet(param.ParameterType, val);
+                        InternalSet(item, propertyName, value);
+                    }
+                    return;
+                }
+
+                {
+                    var value = InternalSet(param.ParameterType, obj);
+                    InternalSet(item, propertyName, value);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(string.Format("There was an error saving the parameter: {0}", propertyName), ex);
+            }
+        }
+
+        private static void InternalSet(object item, string propertyName, string value)
+        {
+            var trigger = item as Life.Trigger;
+            if (trigger != null)
+            {
+                var newParam = trigger.Parameters.FirstOrDefault(x => x.Name == propertyName);
+                if (newParam == null)
+                {
+                    newParam = new Parameter
+                    {
+                        Name = propertyName,
+                        TriggerId = trigger.Id
+                    };
+                    App.AppContext.Parameters.InsertOnSubmit(newParam);
+                }
+                newParam.Value = value;
+                App.AppContext.SubmitChanges();
+            }
+            var activity = item as Life.Activity;
+            if (activity != null)
+            {
+                var newParam = activity.States.FirstOrDefault(x => x.Name == propertyName);
+                if (newParam == null)
+                {
+                    newParam = new State
+                    {
+                        Name = propertyName,
+                        ActivityId = activity.Id
+                    };
+                    App.AppContext.States.InsertOnSubmit(newParam);
+                }
+                newParam.Value = value;
+                App.AppContext.SubmitChanges();
+            }
+        }
+
+        private static string InternalSet(Type paramType, object obj)
+        {
+            // save primitives
+            string value;
+            if (paramType == typeof(string))
+                value = obj.ToString();
+            else if (paramType.IsEnum)
+                value = Enum.GetName(obj.GetType(), obj);
+            else if (paramType == typeof(bool))
+                value = (bool)obj ? bool.TrueString : bool.FalseString;
+            // TODO: add more primitives here
+
+            else
+            {
+                using (var mem = new MemoryStream())
+                {
+                    var serlializer = new SoapFormatter
+                    {
+                        AssemblyFormat = FormatterAssemblyStyle.Full
+                    };
+                    serlializer.Serialize(mem, obj);
+                    value = Encoding.Default.GetString(mem.ToArray());
+                }
+            }
+
+            // save string as normal
+            return value;
+        }
+
+        private static ConstructorInfo InternalSelectConstructor(object item, Type type, string propertyName = null)
+        {
+            // get state information for the current activity or trigger
+            Dictionary<string, string> values;
+            if (item as Life.Trigger != null)
+                values = ((Life.Trigger) item).Parameters.ToDictionary(
+                    x => x.Name,
+                    x => x.Value,
+                    StringComparer.InvariantCultureIgnoreCase);
+            else if (item as Life.Activity != null)
+                values = ((Life.Activity) item).States.ToDictionary(
+                    x => x.Name,
+                    x => x.Value,
+                    StringComparer.InvariantCultureIgnoreCase);
+            else
+                throw new NotImplementedException();
+
+            // put args in right order
+            var constructors = type.GetConstructors();
+
+            // only search the constructors that contain the parameter name
+            if (!string.IsNullOrEmpty(propertyName))
+                constructors = constructors
+                    .Where(x => x.GetParameters().Select(y => y.Name)
+                                 .Contains(propertyName, StringComparer.InvariantCultureIgnoreCase))
+                    .ToArray();
+
+            string value;
+            return constructors
+                .OrderByDescending(
+                    constructor => constructor
+                                       .GetParameters()
+                                       .Count(
+                                           x => x.ParameterType != item.GetType() &&
+                                                values.TryGetValue(x.Name, out value)))
+                .First();
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvocator]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            var handler = PropertyChanged;
+            if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public string Name
+        {
+            get { return GetType().FullName; }
+        }
+    }
+}

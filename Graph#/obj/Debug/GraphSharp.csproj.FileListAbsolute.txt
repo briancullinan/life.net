@@ -1,0 +1,11 @@
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\bin\CodeContracts\GraphSharp.Contracts.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\bin\CodeContracts\GraphSharp.Contracts.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\bin\GraphSharp.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\bin\GraphSharp.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#\obj\Debug\GraphSharp.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#\obj\Debug\Decl\GraphSharp.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#\obj\Debug\Decl\GraphSharp.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#\obj\Debug\GraphSharpccrefgen.rsp
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#\obj\Debug\GraphSharp.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#\obj\Debug\GraphSharp.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Graph#\obj\Debug\CodeContractAnalysisRun.log

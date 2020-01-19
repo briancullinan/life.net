@@ -1,0 +1,33 @@
+﻿using System.Windows;
+
+namespace Files.Controls
+{
+    /// <summary>
+    /// Interaction logic for Filesystem.xaml
+    /// </summary>
+    public partial class Filesystem
+    {
+        public static readonly DependencyProperty TriggerProperty = DependencyProperty.Register(
+            "Trigger",
+            typeof (Triggers.Watcher),
+            typeof (Filesystem),
+            new PropertyMetadata(null));
+
+        public Triggers.Watcher Trigger
+        {
+            get { return (Triggers.Watcher)GetValue(TriggerProperty); }
+            private set { SetValue(TriggerProperty, value); }
+        }
+
+        public Filesystem()
+        {
+            InitializeComponent();
+        }
+
+        public Filesystem(Triggers.Watcher filesystem)
+            : this()
+        {
+            Trigger = filesystem;
+        }
+    }
+}

@@ -1,0 +1,40 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Configuration.Install;
+using System.Linq;
+using System.Diagnostics;
+
+
+namespace Life
+{
+	[RunInstaller(true)]
+	public partial class InstallLife : System.Configuration.Install.Installer
+	{
+		public InstallLife()
+		{
+			InitializeComponent();
+
+
+			try
+			{
+				ProcessStartInfo procStartInfo =
+					new ProcessStartInfo("cmd", "/c netsh http add urlacl url=http://127.0.0.1:13453/ user=\"ARRAKIS\\Brian Cullinan\"");
+				procStartInfo.RedirectStandardOutput = true;
+				procStartInfo.UseShellExecute = false;
+				procStartInfo.CreateNoWindow = true;
+				Process proc = new Process();
+				proc.StartInfo = procStartInfo;
+				proc.Start();
+				string result = proc.StandardOutput.ReadToEnd();
+				Console.WriteLine(result);
+			}
+			catch (Exception e)
+			{
+				Debug.WriteLine(e);
+			}
+
+		}
+	}
+}

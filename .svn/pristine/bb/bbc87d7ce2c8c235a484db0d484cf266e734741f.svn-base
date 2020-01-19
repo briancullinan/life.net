@@ -1,0 +1,27 @@
+﻿<ContentPresenter x:Class="Email.Controls.Email"
+         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+         xmlns:email="clr-namespace:Email" 
+         xmlns:controls="clr-namespace:Life.Controls;assembly=Life"
+         mc:Ignorable="d"
+         d:DesignHeight="100" d:DesignWidth="200">
+    <ContentPresenter.Resources>
+        <email:DateToParentConverter x:Key="DateToParentConverter" />
+        <DataTemplate x:Key="{x:Type email:Email}" DataType="{x:Type email:Email}">
+            <Label Content="{Binding Subject}" />
+        </DataTemplate>
+    </ContentPresenter.Resources>
+    <ContentPresenter.ContentTemplate>
+        <StaticResource ResourceKey="{x:Type email:Email}" />
+    </ContentPresenter.ContentTemplate>
+    <controls:Navigator.Parent>
+        <MultiBinding Converter="{StaticResource DateToParentConverter}">
+            <MultiBinding.Bindings>
+                <Binding Path="." RelativeSource="{RelativeSource Self}" />
+                <Binding Path="Received" />
+            </MultiBinding.Bindings>
+        </MultiBinding>
+    </controls:Navigator.Parent>
+</ContentPresenter>

@@ -1,0 +1,392 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Mail;
+using System.Runtime.Serialization;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Xml.Serialization;
+using log4net;
+
+namespace Email
+{
+    [Serializable]
+    public sealed class Message : ISerializable
+    {
+        #region "Fields"
+        private static readonly ILog Log = LogManager.GetLogger(typeof(Message));
+        internal static readonly Encoding DefaultEncoding = Encoding.GetEncoding(1252);
+        private readonly string[] _message;
+        private Dictionary<string, string> _headers;
+        private string _rawHeaders;
+        private string _body;
+        private string _contentDisposition;
+        private readonly List<Message> _views = new List<Message>();
+        private readonly List<Message> _attachments = new List<Message>();
+        private readonly Encoding _encoding;
+        private string _contentType;
+        private string _boundary;
+        private string _charset;
+        private string _filename;
+        private readonly string _raw;
+        private readonly int _uid;
+        private readonly string _folder;
+        private IEnumerable<MailAddress> _to;
+        private IEnumerable<MailAddress> _from;
+        private static readonly Regex[] RxDates = new[]
+            {
+                @"\d{1,2}\s+[a-z]{3}\s+\d{2,4}\s+\d{1,2}\:\d{2}\:\d{1,2}\s+[\+\-\d\:]*",
+                @"\d{4}\-\d{1,2}-\d{1,2}\s+\d{1,2}\:\d{2}(?:\:\d{2})?(?:\s+[\+\-\d:]+)?"
+            }.Select(x => new Regex(x, RegexOptions.Compiled | RegexOptions.IgnoreCase)).ToArray();
+        private DateTime _received;
+        private bool _dateSet;
+
+        #endregion
+
+        #region "Properties"
+
+        [XmlIgnore]
+        public DateTime Received
+        {
+            get
+            {
+                if (!_dateSet)
+                {
+                    _received = GetDate();
+                    _dateSet = true;
+                }
+                return _received;
+            }
+        }
+
+        [XmlIgnore]
+        public IEnumerable<MailAddress> To { get { return _to ?? (_to = GetMailAddresses("To").Union(GetMailAddresses("Cc")).Union(GetMailAddresses("Bcc"))); } }
+
+        [XmlIgnore]
+        public IEnumerable<MailAddress> From { get { return _from ?? (_from = GetMailAddresses("From").Union(GetMailAddresses("Sender"))); } }
+
+        [XmlIgnore]
+        public string Subject { get { return Headers.TryGetValue("Subject", string.Empty); } }
+
+        [XmlIgnore]
+        public string Raw { get { return _raw; } }
+
+        [XmlIgnore]
+        public int Uid { get { return _uid; } }
+
+        [XmlIgnore]
+        public string Folder { get { return _folder; } }
+
+        [XmlIgnore]
+        public List<Message> Attachments { get { return _attachments; } }
+
+        [XmlIgnore]
+        public List<Message> AlternateViews { get { return _views; } }
+
+        [XmlIgnore]
+        public Dictionary<string, string> Headers
+        {
+            get { return _headers ?? (_headers = ParseHeaders()); }
+        }
+
+        [XmlIgnore]
+        public string RawHeaders
+        {
+            get
+            {
+                return _rawHeaders ?? (_rawHeaders = String.Join(
+                    Environment.NewLine,
+                    _message.TakeWhile((x, i) => x.Trim().Length > 0 && i >= 0)));
+            }
+        }
+
+        [XmlIgnore]
+        public string Body
+        {
+            get { return _body ?? (_body = ParseBody()); }
+        }
+
+        [XmlIgnore]
+        public string ContentTransferEncoding
+        {
+            get { return Headers.TryGetValue("Content-Transfer-Encoding", string.Empty); }
+        }
+
+        [XmlIgnore]
+        public string ContentType
+        {
+            get
+            {
+                if (_contentType == null)
+                {
+                    _contentType = Headers.TryGetValue("Content-Type", string.Empty);
+                    if (_contentType.Contains(";"))
+                    {
+                        var parts = _contentType.Split(';');
+                        _contentType = parts[0].Trim();
+                        _boundary =
+                            (parts.FirstOrDefault(
+                                x => x.Trim().StartsWith("boundary=", StringComparison.InvariantCultureIgnoreCase)) ?? string.Empty).Trim();
+                        if (!string.IsNullOrEmpty(_boundary))
+                            _boundary = _boundary.Substring("boundary=".Length).Trim('"');
+                        _charset =
+                            (parts.FirstOrDefault(
+                                x => x.Trim().StartsWith("charset=", StringComparison.InvariantCultureIgnoreCase)) ?? string.Empty).Trim();
+                        if (!string.IsNullOrEmpty(_charset))
+                            _charset = _charset.Substring("charset=".Length).Trim('"');
+                    }
+                }
+                return _contentType;
+            }
+        }
+
+        [XmlIgnore]
+        public string Charset
+        {
+            get { return ContentType != null ? _charset : String.Empty; }
+        }
+
+        [XmlIgnore]
+        public string Boundary
+        {
+            get { return ContentType != null ? _boundary : String.Empty; }
+        }
+
+        [XmlIgnore]
+        private string ContentDisposition
+        {
+            get
+            {
+                _contentDisposition = Headers.TryGetValue("Content-Disposition", string.Empty);
+                if (_contentDisposition.Contains(";"))
+                {
+                    var parts = _contentType.Split(';');
+                    _contentDisposition = parts[0].Trim();
+                    _filename =
+                        (parts.FirstOrDefault(
+                            x => x.Trim().StartsWith("filename=", StringComparison.InvariantCultureIgnoreCase)) ??
+                         string.Empty).Trim();
+                    if (!string.IsNullOrEmpty(_filename))
+                        _filename = _filename.Substring("filename=".Length).Trim('"');
+                }
+                return _contentDisposition;
+            }
+        }
+
+        [XmlIgnore]
+        internal bool IsAttachment
+        {
+            get { return ContentDisposition == "attachment" || !string.IsNullOrEmpty(Filename); }
+        }
+
+        [XmlIgnore]
+        public string Filename
+        {
+            get { return ContentDisposition != null ? _filename : String.Empty; }
+        }
+        #endregion
+
+        #region "Constructors"
+
+        /// <summary>
+        /// Used for serialization.
+        /// </summary>
+        private Message(SerializationInfo info, StreamingContext context)
+        {
+            _uid = (int)info.GetValue("uid", typeof(int));
+            _folder = (string)info.GetValue("folder", typeof(string));
+            _encoding = (Encoding)info.GetValue("encoding", typeof(Encoding));
+            _raw = (string)info.GetValue("raw", typeof(string));
+            _message = _raw.Split('\n').Select(x => x.Trim('\r')).ToArray();
+            _headers = ParseHeaders();
+            _body = ParseBody();
+        }
+
+        public Message(string raw, Encoding encoding, int uid, string folder)
+        {
+            _uid = uid;
+            _folder = folder;
+            _encoding = encoding;
+            _raw = raw;
+            _message = _raw.Split('\n').Select(x => x.Trim('\r')).ToArray();
+            _headers = ParseHeaders();
+            _body = ParseBody();
+        }
+
+        #endregion
+
+        #region "Methods"
+        private IEnumerable<MailAddress> GetMailAddresses(string header)
+        {
+            var mailAddresses = new List<MailAddress>();
+            var addresses = Regex.Split(Headers.TryGetValue(header, "").Trim(), @"(,)(?=(?:[^""]|""[^""]*"")*$)");
+            var regex = new Regex(@"^.*?([a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])*).*$");
+            var matches = addresses.Select(x => regex.Match(x)).Where(x => x.Success);
+            foreach (var address in matches)
+            {
+                try
+                {
+                    mailAddresses.Add(new MailAddress(address.Groups[1].Value, address.Value));
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(string.Format("There was an error creating the e-mail address: {0}", address.Value), ex);
+                }
+            }
+
+            return mailAddresses;
+        }
+
+        private string ParseBody()
+        {
+            var body = String.Join(Environment.NewLine, _message
+                                                            // skip the headers
+                                                            .SkipWhile((x, i) => x.Trim().Length > 0 && i >= 0)
+                                                            // skip the blanks after the headers
+                                                            .SkipWhile((x, i) => x.Trim().Length == 0));
+            if (!string.IsNullOrEmpty(Boundary))
+            {
+                ParseMime(body, Boundary);
+                if (AlternateViews.Count > 0)
+                {
+                    var att = AlternateViews.FirstOrDefault(x => x.ContentType.Is("text/plain")) ??
+                        AlternateViews.FirstOrDefault(x => x.ContentType.Contains("html"));
+
+                    if (att != null)
+                        return att.Body;
+                }
+            }
+            else
+            {
+                if (ContentTransferEncoding.Is("quoted-printable"))
+                    return Utilities.DecodeQuotedPrintable(body, _encoding);
+                if (ContentTransferEncoding.Is("base64")
+                    //only decode the content if it is a text document
+                    && ContentType.StartsWith("text/", StringComparison.OrdinalIgnoreCase))
+                    return _encoding.GetString(Convert.FromBase64String(body));
+                return body;
+            }
+            return String.Empty;
+        }
+
+        private void ParseMime(string body, string boundary)
+        {
+            string bounderInner = "--" + boundary,
+                   bounderOuter = bounderInner + "--";
+
+            var attachment = body.Split('\n')
+                // start at body skip blank lines at the top
+                                 .SkipWhile(x => !x.Trim().StartsWith(bounderInner))
+                // get every line until end where boundary outer is
+                                 .TakeWhile(x => !x.Trim().StartsWith(bounderOuter))
+                                 .Select(x => x.Trim()).ToList();
+
+            // parse headers at top of body
+            var bodyStart = 0;
+            while (attachment.SkipWhile((s, i) => i <= bodyStart).Any(x => x.Trim().StartsWith(bounderInner)))
+            {
+                var headers = String.Join(Environment.NewLine, attachment
+                                                                    // skip the first line which we already know is a boundaryInner
+                                                                    .SkipWhile((s, i) => i <= bodyStart || ((s.Trim().Length == 0 || s.Trim().StartsWith(bounderInner)) && (++bodyStart) >= 0))
+                                                                    // take all the lines until another boundaryInner is hit
+                                                                    .TakeWhile((x, i) => x.Trim().Length > 0 && !x.Trim().StartsWith(bounderInner) && (++bodyStart) >= 0));
+
+                // get message between headers and ending boundary
+                var message = String.Join(Environment.NewLine, attachment
+                                                                   // skip the headers and the first line which is a boundary inner
+                                                                   .SkipWhile((s, i) => i <= bodyStart || (s.Trim().Length == 0 && (++bodyStart) >= 0))
+                                                                   // take everything else
+                                                                   .TakeWhile(x => !x.Trim().StartsWith(bounderInner) && (++bodyStart) >= 0));
+
+                var a = new Message(headers + Environment.NewLine + Environment.NewLine + message, Utilities.ParseCharsetToEncoding(Charset), _uid, _folder);
+
+                // check for nested part
+                var nestedboundary = a.Boundary;
+                if (!string.IsNullOrEmpty(nestedboundary))
+                {
+                    ParseMime(message, nestedboundary);
+                }
+                else
+                {
+                    // nested
+                    a.ParseBody();
+                    (a.IsAttachment ? _attachments : _views).Add(a);
+                }
+            }
+        }
+
+        private Dictionary<string, string> ParseHeaders()
+        {
+            var headers = Utilities.DecodeWords(RawHeaders);
+            var temp = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var lines = headers.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            string key = null;
+            foreach (var line in lines)
+            {
+                if (key != null && (line[0] == '\t' || line[0] == ' '))
+                {
+                    temp[key] += line.Trim();
+
+                }
+                else
+                {
+                    var i = line.IndexOf(':');
+                    if (i > -1)
+                    {
+                        key = line.Substring(0, i).Trim();
+                        var value = line.Substring(i + 1).Trim();
+                        temp[key] = value;
+                    }
+                }
+            }
+
+            return temp;
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("raw", _raw);
+            info.AddValue("encoding", _encoding);
+            info.AddValue("uid", _uid);
+            info.AddValue("folder", _folder);
+        }
+
+        public DateTime GetDate()
+        {
+            var value = Headers.TryGetValue("Date", string.Empty).ToNullDate();
+            if (value == null)
+            {
+                foreach (var rx in RxDates)
+                {
+                    var match = rx.Matches(Headers.TryGetValue("Received", string.Empty))
+                      .Cast<Match>().LastOrDefault();
+                    if (match == null) continue;
+                    value = match.Value.ToNullDate();
+                    if (value != null)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            if (value == null)
+            {
+                foreach (var rx in RxDates)
+                {
+                    var match = rx.Matches(_message.FirstOrDefault(x => x.StartsWith("Date:")) ?? "")
+                      .Cast<Match>().LastOrDefault();
+                    if (match == null) continue;
+                    value = match.Value.ToNullDate();
+                    if (value != null)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            //written this way so a break can be set on the null condition
+            return value == null ? DateTime.MinValue : value.Value;
+        }
+        #endregion
+    }
+}

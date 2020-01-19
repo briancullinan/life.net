@@ -1,0 +1,282 @@
+﻿using System;
+using System.ComponentModel;
+using System.Linq;
+using System.Net;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+using System.Web;
+using Life.Utilities;
+using Newtonsoft.Json.Linq;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Firefox;
+using OpenQA.Selenium.Interactions;
+using OpenQA.Selenium.Support.UI;
+using WindowsNative;
+using log4net;
+
+namespace Facebook.Activities
+{
+    public class SynchronizeContacts : Activity
+    {
+        private static readonly ILog Log = LogManager.GetLogger(typeof(SynchronizeContacts));
+
+        private static readonly string[] Permissions = new[]
+            {
+                "ads_management",
+                "create_event",
+                "create_note",
+                "email",
+                "export_stream",
+                "friends_about_me",
+                "friends_actions.music",
+                "friends_actions.news",
+                "friends_actions.video",
+                "friends_activities",
+                "friends_birthday",
+                "friends_education_history",
+                "friends_events",
+                "friends_games_activity",
+                "friends_groups",
+                "friends_hometown",
+                "friends_interests",
+                "friends_likes",
+                "friends_location",
+                "friends_notes",
+                "friends_online_presence",
+                "friends_photo_video_tags",
+                "friends_photos",
+                "friends_questions",
+                "friends_relationship_details",
+                "friends_relationships",
+                "friends_religion_politics",
+                "friends_status",
+                "friends_subscriptions",
+                "friends_videos",
+                "friends_website",
+                "friends_work_history",
+                "manage_friendlists",
+                "manage_notifications",
+                "manage_pages",
+                "photo_upload",
+                "publish_actions",
+                "publish_checkins",
+                "publish_stream",
+                "read_friendlists",
+                "read_insights",
+                "read_mailbox",
+                "read_page_mailboxes",
+                "read_requests",
+                "read_stream",
+                "rsvp_event",
+                "share_item",
+                "sms",
+                "status_update",
+                "user_about_me",
+                "user_actions.music",
+                "user_actions.news",
+                "user_actions.video",
+                "user_activities",
+                "user_birthday",
+                "user_education_history",
+                "user_events",
+                "user_games_activity",
+                "user_groups",
+                "user_hometown",
+                "user_interests",
+                "user_likes",
+                "user_location",
+                "user_notes",
+                "user_online_presence",
+                "user_photo_video_tags",
+                "user_photos",
+                "user_questions",
+                "user_relationship_details",
+                "user_relationships",
+                "user_religion_politics",
+                "user_status",
+                "user_subscriptions",
+                "user_videos",
+                "user_website",
+                "user_work_history",
+                "video_upload",
+                "xmpp_login"
+            };
+
+        private readonly string _profile;
+        private readonly string _credential;
+
+        public SynchronizeContacts(Life.Activity activity, string profile = "", string credential = "Facebook.Profile")
+            : base(activity)
+        {
+            _profile = profile;
+            _credential = credential;
+        }
+
+        public override void Execute(dynamic context)
+        {
+            var access = GetAuthToken();
+
+            // list contacts
+            var contactsUrl =
+                string.Format(
+                    "https://graph.facebook.com/me?fields=id%2Cname%2Cfriends&method=GET&format=json&access_token={0}",
+                    access);
+
+            var client = new WebClient();
+            var contactsData = client.DownloadData(contactsUrl);
+            var contacts = Encoding.UTF8.GetString(contactsData);
+            
+            // save contacts to the database
+            foreach (var json in JObject.Parse(contacts)["friends"]["data"])
+            {
+                var id = json["id"].ToObject<long>();
+                var contactUrl =
+                    string.Format(
+                        "https://graph.facebook.com/{0}?method=GET&format=json&access_token={1}",
+                        id,
+                        access);
+                var contactData = client.DownloadData(contactUrl);
+                var contact = Encoding.UTF8.GetString(contactData);
+                var contactJson = JObject.Parse(contact);
+                using (var data = new DatalayerDataContext())
+                {
+                    FacebookContact fb;
+                    if ((fb = data.FacebookContacts.FirstOrDefault(x => x.Id == id)) == null)
+                    {
+                        fb = new FacebookContact
+                            {
+                                Id = id
+                            };
+                        data.FacebookContacts.InsertOnSubmit(fb);
+                    }
+
+                    fb.Name = json["name"].ToObject<string>();
+                    JToken username;
+                    if(contactJson.TryGetValue("username", StringComparison.InvariantCultureIgnoreCase, out username))
+                        fb.Username = username.ToObject<string>();
+                    fb.LastUpdated = contactJson["updated_time"].ToObject<DateTime>();
+
+                    try
+                    {
+                        data.SubmitChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(string.Format("There was an error saving the contact: {0} {1}", id, fb.Name), ex);
+                    }
+                }
+
+            }
+        }
+
+        private string GetAuthToken()
+        {
+            var client = new WebClient();
+
+            var graphData = client.DownloadData(
+                "https://graph.facebook.com/search?q=Graph%20API%20Explorer&type=application&method=GET&format=json");
+
+            var graph = Encoding.UTF8.GetString(graphData);
+
+            var graphId = JObject.Parse(graph)["data"][0]["id"];
+
+            var graphUrl = string.Format("https://graph.facebook.com/oauth/authorize?type=user_agent" +
+                                 "&client_id={0}" +
+                                 "&scope={1}" +
+                                 "&redirect_uri=https%3A%2F%2Fdevelopers.facebook.com%2Ftools%2Fexplorer%2Fcallback",
+                                 graphId,
+                                 string.Join(",", Permissions));
+
+            // log in to facebook
+            var driver = new FirefoxDriver(new FirefoxProfile(_profile));
+            driver.Navigate().GoToUrl(graphUrl);
+
+            var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(2));
+            wait.Until(x => x.FindElement(By.Id("loginform")));
+
+            string username, password;
+            GetLogin(out username, out password);
+
+            driver.FindElementsById("email").First().SendKeys(username);
+            driver.FindElementsById("pass").First().SendKeys(password);
+            driver.FindElementsById("loginbutton").First().Submit();
+
+            Thread.Sleep(500);
+
+            try
+            {
+                wait = new WebDriverWait(driver, TimeSpan.FromSeconds(2));
+                var elem = wait.Until(x => x.FindElement(By.Id("grant_required_clicked")));
+                new Actions(driver).MoveToElement(elem).Click(elem).Perform();
+
+                Thread.Sleep(500);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug("No required screen.", ex);
+            }
+
+            try
+            {
+                wait = new WebDriverWait(driver, TimeSpan.FromSeconds(2));
+                var elem = wait.Until(x => x.FindElement(By.Id("grant_clicked")));
+                new Actions(driver).MoveToElement(elem).Click(elem).Perform();
+
+                Thread.Sleep(500);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug("No permission screen.", ex);
+            }
+
+            var addressToken = driver.Url;
+            var query = HttpUtility.ParseQueryString(addressToken.Substring(addressToken.IndexOf('#') + 1));
+
+            driver.Close();
+
+            return query["access_token"];
+        }
+
+        private void GetLogin(out string username, out string password)
+        {
+            try
+            {
+                // get the login information out of the credential store
+                int count;
+                IntPtr pCredentials;
+                var ret = AdvApi32.CredEnumerate(null, 0, out count, out pCredentials);
+                if (!ret)
+                    throw new Win32Exception();
+                var credentials = new IntPtr[count];
+                // convert pointer to array to array of pointers
+                for (var n = 0; n < count; n++)
+                {
+                    credentials[n] = Marshal.ReadIntPtr(pCredentials,
+                                                        n*Marshal.SizeOf(typeof (IntPtr)));
+                }
+
+                var login = credentials
+                    // convert each pointer to a structure
+                    .Select(ptr => (WinCred.Credential) Marshal.PtrToStructure(ptr, typeof (WinCred.Credential)))
+                    // select the structure with the matching credential name
+                    .FirstOrDefault(cred => cred.targetName.StartsWith(_credential));
+
+                // get the password
+                var currentPass = Marshal.PtrToStringUni(login.credentialBlob, (int)login.credentialBlobSize / 2);
+                var lastError = Marshal.GetLastWin32Error();
+                if (lastError != 0)
+                    throw new Win32Exception(lastError);
+
+                username = login.userName;
+                password = currentPass;
+            }
+            catch (Exception ex)
+            {
+                Log.Error("There was an error finding the credentials for Facebook.", ex);
+                username = null;
+                password = null;
+            }
+        }
+    }
+}

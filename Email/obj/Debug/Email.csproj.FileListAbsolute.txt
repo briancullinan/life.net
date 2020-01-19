@@ -1,0 +1,14 @@
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\Email.dll.config
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\Email.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\bin\Debug\Plugins\Email.pdb
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Email\obj\Debug\Email.csprojResolveAssemblyReference.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Email\obj\Debug\Controls\Email.g.cs
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Email\obj\Debug\GeneratedInternalTypeHelper.g.cs
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Email\obj\Debug\Email_MarkupCompile.cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Email\obj\Debug\Email_MarkupCompile.lref
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Email\obj\Debug\Controls\Email.baml
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Email\obj\Debug\Email.g.resources
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Email\obj\Debug\Email.Properties.Resources.resources
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Email\obj\Debug\Email.csproj.GenerateResource.Cache
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Email\obj\Debug\Email.dll
+C:\Users\bjcullinan\Documents\Visual Studio 2012\Projects\Life\Email\obj\Debug\Email.pdb

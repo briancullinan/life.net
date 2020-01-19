@@ -1,0 +1,335 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+ *
+ * System.Data.SQLite.2012.csproj -
+ *
+ * Written by Joe Mistachkin.
+ * Released to the public domain, use at your own risk!
+ *
+-->
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{AC139952-261A-4463-B6FA-AEBC25283A66}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>System.Data.SQLite</RootNamespace>
+    <AssemblyName>System.Data.SQLite</AssemblyName>
+    <SQLiteNetDir>$(MSBuildProjectDirectory)\..</SQLiteNetDir>
+    <NetFx45>true</NetFx45>
+    <ConfigurationYear>2012</ConfigurationYear>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+  </PropertyGroup>
+  <Import Project="$(SQLiteNetDir)\SQLite.NET.Settings.targets" />
+  <PropertyGroup Condition="'$(BinaryOutputPath)' != ''">
+    <OutputPath>$(BinaryOutputPath)</OutputPath>
+    <DocumentationFile>$(BinaryOutputPath)System.Data.SQLite.xml</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <OutputPath>..\bin\Debug\Plugins\</OutputPath>
+    <DocumentationFile>..\bin\Debug\Plugins\System.Data.SQLite.xml</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <!--
+ *
+ * System.Data.SQLite.References.targets -
+ *
+ * Written by Joe Mistachkin.
+ * Released to the public domain, use at your own risk!
+ *
+******************************************************************************
+**                     Core References (Full Framework)                     **
+******************************************************************************
+  -->
+  <ItemGroup Condition="'$(IsCompactFramework)' == 'false'">
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Transactions" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <!--
+  ******************************************************************************
+  **                    Core References (Compact Framework)                   **
+  ******************************************************************************
+  -->
+  <ItemGroup Condition="'$(IsCompactFramework)' != 'false'">
+    <Reference Include="System">
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Data">
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Xml">
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <!--
+ *
+ * System.Data.SQLite.Properties.targets -
+ *
+ * Written by Joe Mistachkin.
+ * Released to the public domain, use at your own risk!
+ *
+      NOTE: Only use functionality available in the .NET Framework 2.0?  By
+            default, this is disabled.  This must be enabled to successfully
+            build the project using Visual Studio 2005 and/or the .NET
+            Framework 2.0 (if necessary, it will typically be enabled from
+            within the project file itself).
+  -->
+  <PropertyGroup Condition="'$(NetFx20)' != 'false'">
+    <DefineConstants>$(DefineConstants);NET_20</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Only use functionality available in the .NET Framework 3.5?  By
+            default, this is disabled.  This must be enabled to successfully
+            build the project using Visual Studio 2008 and/or the .NET
+            Framework 3.5 (if necessary, it will typically be enabled from
+            within the project file itself).
+  -->
+  <PropertyGroup Condition="'$(NetFx35)' != 'false'">
+    <DefineConstants>$(DefineConstants);NET_35</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Only use functionality available in the .NET Framework 4.0?  By
+            default, this is disabled.  This must be enabled to successfully
+            build the project using Visual Studio 2010 and/or the .NET
+            Framework 4.0 (if necessary, it will typically be enabled from
+            within the project file itself).
+  -->
+  <PropertyGroup Condition="'$(NetFx40)' != 'false'">
+    <DefineConstants>$(DefineConstants);NET_40</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Only use functionality available in the .NET Framework 4.5?  By
+            default, this is disabled.  This must be enabled to successfully
+            build the project using Visual Studio 2012 and/or the .NET
+            Framework 4.5 (if necessary, it will typically be enabled from
+            within the project file itself).
+  -->
+  <PropertyGroup Condition="'$(NetFx45)' != 'false'">
+    <DefineConstants>$(DefineConstants);NET_45</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Only use functionality available in the .NET Compact Framework 2.0?
+            By default, this is disabled.  This must be enabled to successfully
+            build the project using Visual Studio 2005 and/or the .NET Compact
+            Framework 2.0 (if necessary, it will typically be enabled from
+            within the project file itself).
+  -->
+  <PropertyGroup Condition="'$(IsCompactFramework)' != 'false' And&#xD;&#xA;                            '$(TargetFrameworkVersion)' == 'v2.0'">
+    <DefineConstants>$(DefineConstants);NET_COMPACT_20</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Enable extra internal state checking?
+  -->
+  <PropertyGroup Condition="'$(CheckState)' != 'false'">
+    <DefineConstants>$(DefineConstants);CHECK_STATE</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Enable counting of the CriticalHandle derived object instances?
+  -->
+  <PropertyGroup Condition="'$(CountHandle)' != 'false'">
+    <DefineConstants>$(DefineConstants);COUNT_HANDLE</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: For interaction with the native SQLite implementation, use the
+            custom build interop DLL (i.e. "SQLite.Interop.DLL")?
+  -->
+  <PropertyGroup Condition="'$(UseInteropDll)' != 'false'">
+    <DefineConstants>$(DefineConstants);USE_INTEROP_DLL</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: For interaction with the native SQLite implementation, use the
+            standard DLL (i.e. "sqlite3.dll")?
+  -->
+  <PropertyGroup Condition="'$(UseSqliteStandard)' != 'false'">
+    <DefineConstants>$(DefineConstants);SQLITE_STANDARD</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Is the project being built to support the .NET Compact Framework?
+  -->
+  <PropertyGroup Condition="'$(IsCompactFramework)' != 'false'">
+    <DefineConstants>$(DefineConstants);PLATFORM_COMPACTFRAMEWORK</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Emit an AssemblyFlags attribute that includes the Retargetable
+            flag from the AssemblyNameFlags enumeration?
+  -->
+  <PropertyGroup Condition="'$(IsRetargetable)' != 'false'">
+    <DefineConstants>$(DefineConstants);RETARGETABLE</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Throw an exception when somebody tries to access a disposed object?
+  -->
+  <PropertyGroup Condition="'$(ThrowOnDisposed)' != 'false'">
+    <DefineConstants>$(DefineConstants);THROW_ON_DISPOSED</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Attempt to pre-load the native SQLite library?
+  -->
+  <PropertyGroup Condition="'$(PreLoadNativeLibrary)' != 'false'">
+    <DefineConstants>$(DefineConstants);PRELOAD_NATIVE_LIBRARY</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Enable support (in the managed assemblies) for the custom extension
+            functions?
+  -->
+  <PropertyGroup Condition="'$(InteropExtensionFunctions)' != 'false'">
+    <DefineConstants>$(DefineConstants);INTEROP_EXTENSION_FUNCTIONS</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Enable support (in the managed assemblies) for the test extension?
+  -->
+  <PropertyGroup Condition="'$(InteropTestExtension)' != 'false'">
+    <DefineConstants>$(DefineConstants);INTEROP_TEST_EXTENSION</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Enable support (in the managed assemblies) for encrypted databases
+            using the CryptoAPI based codec?
+  -->
+  <PropertyGroup Condition="'$(InteropCodec)' != 'false'">
+    <DefineConstants>$(DefineConstants);INTEROP_CODEC</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Enable extra diagnostics from the custom built interop DLL (see the
+            "SQLite.NET.Settings.targets" file for more information)?
+  -->
+  <PropertyGroup Condition="'$(InteropDebug)' != 'false'">
+    <DefineConstants>$(DefineConstants);INTEROP_DEBUG</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Enable the logging callback in the custom built interop DLL (see
+            the "SQLite.NET.Settings.targets" file for more information)?
+  -->
+  <PropertyGroup Condition="'$(InteropLog)' != 'false'">
+    <DefineConstants>$(DefineConstants);INTEROP_LOG</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Enable various Trace.WriteLine statements included in the code,
+            based on several criteria (see the "SQLite.NET.Settings.targets"
+            file for more information)?
+  -->
+  <PropertyGroup Condition="'$(TraceConnection)' != 'false'">
+    <DefineConstants>$(DefineConstants);TRACE_CONNECTION</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TraceHandle)' != 'false'">
+    <DefineConstants>$(DefineConstants);TRACE_HANDLE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TracePreLoad)' != 'false'">
+    <DefineConstants>$(DefineConstants);TRACE_PRELOAD</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TraceStatement)' != 'false'">
+    <DefineConstants>$(DefineConstants);TRACE_STATEMENT</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TraceWarning)' != 'false'">
+    <DefineConstants>$(DefineConstants);TRACE_WARNING</DefineConstants>
+  </PropertyGroup>
+  <!--
+      NOTE: Enable the use of native Windows APIs, when available?
+  -->
+  <PropertyGroup Condition="'$(UseWindows)' != 'false'">
+    <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+  </PropertyGroup>
+  <!--
+ *
+ * System.Data.SQLite.Files.targets -
+ *
+ * Written by Joe Mistachkin.
+ * Released to the public domain, use at your own risk!
+ *
+  ******************************************************************************
+  **                            Core Files (Common)                           **
+  ******************************************************************************
+  -->
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="SQLite3.cs" />
+    <Compile Include="SQLite3_UTF16.cs" />
+    <Compile Include="SQLiteBackup.cs" />
+    <Compile Include="SQLiteBase.cs" />
+    <Compile Include="SQLiteCommand.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="SQLiteCommandBuilder.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="SQLiteConnection.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="SQLiteConnectionPool.cs" />
+    <Compile Include="SQLiteConnectionStringBuilder.cs" />
+    <Compile Include="SQLiteConvert.cs" />
+    <Compile Include="SQLiteDataAdapter.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="SQLiteDataReader.cs" />
+    <Compile Include="SQLiteDefineConstants.cs" />
+    <Compile Include="SQLiteException.cs" />
+    <Compile Include="SQLiteFactory.cs" />
+    <Compile Include="SQLiteFunction.cs" />
+    <Compile Include="SQLiteFunctionAttribute.cs" />
+    <Compile Include="SQLiteKeyReader.cs" />
+    <Compile Include="SQLiteLog.cs" />
+    <Compile Include="SQLiteMetaDataCollectionNames.cs" />
+    <Compile Include="SQLiteParameter.cs" />
+    <Compile Include="SQLiteParameterCollection.cs" />
+    <Compile Include="SQLiteStatement.cs" />
+    <Compile Include="SQLiteTransaction.cs" />
+    <Compile Include="SR.Designer.cs">
+      <DependentUpon>SR.resx</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="UnsafeNativeMethods.cs" />
+    <EmbeddedResource Include="SR.resx">
+      <SubType>Designer</SubType>
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>SR.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  <!--
+  ******************************************************************************
+  **                        Core Files (Full Framework)                       **
+  ******************************************************************************
+  -->
+  <ItemGroup Condition="'$(IsCompactFramework)' == 'false'">
+    <Compile Include="SQLiteEnlistment.cs" />
+    <Compile Condition="'$(NetFx35)' != 'false' Or&#xD;&#xA;                        '$(NetFx40)' != 'false' Or&#xD;&#xA;                        '$(NetFx45)' != 'false'" Include="LINQ\SQLiteConnection_Linq.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Condition="'$(NetFx35)' != 'false' Or&#xD;&#xA;                        '$(NetFx40)' != 'false' Or&#xD;&#xA;                        '$(NetFx45)' != 'false'" Include="LINQ\SQLiteFactory_Linq.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <EmbeddedResource Include="SQLiteCommand.bmp" />
+    <EmbeddedResource Include="SQLiteConnection.bmp" />
+    <EmbeddedResource Include="SQLiteDataAdapter.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="sqlite3.def">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="sqlite3.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

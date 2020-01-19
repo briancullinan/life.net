@@ -1,0 +1,21 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Life.Utilities;
+
+namespace Files.Activities
+{
+    public class SynchronizeFiles : Activity
+    {
+        public SynchronizeFiles(Life.Activity activity) : base(activity)
+        {
+        }
+
+        public override void Execute(dynamic context)
+        {
+            
+        }
+    }
+}

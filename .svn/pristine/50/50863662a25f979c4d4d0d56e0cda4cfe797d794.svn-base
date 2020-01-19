@@ -1,0 +1,21 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Life.Utilities;
+
+namespace Firefox.Activities
+{
+    public class Search : Activity
+    {
+        public Search(Life.Activity activity) : base(activity)
+        {
+        }
+
+        public override void Execute(dynamic context)
+        {
+            
+        }
+    }
+}

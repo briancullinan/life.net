@@ -1,0 +1,82 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
+using log4net;
+
+namespace Facebook
+{
+    public static partial class Update
+    {
+        public const string ALBUM_FIELDS = "created_time,updated_time,from,cover_photo,description,name,type";
+
+        public static FacebookAlbum Album(long id, JToken json)
+        {
+            FacebookAlbum fa;
+            if ((fa = Data.FacebookAlbums.FirstOrDefault(x => x.Id == id)) == null)
+            {
+                fa = new FacebookAlbum
+                {
+                    Id = id,
+                    TimeCreated = json.TryGetValue<DateTime>("created_time"),
+                };
+                if (fa.TimeCreated == default(DateTime))
+                    return null;
+                Data.FacebookAlbums.InsertOnSubmit(fa);
+            }
+            if (!json.Any())
+                return fa;
+
+            fa.Description = json.TryGetValue<string>("description");
+            fa.Name = json.TryGetValue<string>("name");
+            fa.TimeUpdated = json.TryGetValue<DateTime?>("updated_time");
+            fa.Type = json.TryGetValue<string>("type");
+
+            try
+            {
+                Data.SubmitChanges();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(string.Format("There was an error saving the album: {0} {1}", id, fa.Name), ex);
+                return null;
+            }
+
+            var fromId = json["from"].TryGetValue<long?>("id");
+            if (fromId != null)
+            {
+                var contact = Contact(fromId.Value, json["from"]);
+                if (contact != null)
+                    fa.Contact = contact.Id;
+                try
+                {
+                    Data.SubmitChanges();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(string.Format("There was an error saving the album: {0} {1}", id, fa.Name), ex);
+                }
+            }
+
+            var coverId = json.TryGetValue<long?>("cover_photo");
+            if (coverId != null)
+            {
+                var cover = Photo(coverId.Value, json["cover_photo"]);
+                if (cover != null)
+                    fa.Cover = cover.Id;
+                try
+                {
+                    Data.SubmitChanges();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(string.Format("There was an error saving the album: {0} {1}", id, fa.Name), ex);
+                }
+            }
+
+            return fa;
+        }
+    }
+}

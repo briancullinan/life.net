@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="Life" Class="HistoryDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="AppSettings" ConnectionString="Data Source=corrin;Initial Catalog=Life;Persist Security Info=True;User ID=hagal" SettingsObjectName="Firefox.Properties.Settings" SettingsPropertyName="LifeConnectionString1" Provider="System.Data.SqlClient" />
+  <Table Name="dbo.History" Member="Histories">
+    <Type Name="History">
+      <Column Name="Id" Type="System.Int32" DbType="Int NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="Url" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+      <Column Name="Title" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+      <Column Name="Host" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+      <Column Name="Visits" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Hidden" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Typed" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="IconId" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Frecency" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastVisit" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Guid" Type="System.String" DbType="Text" CanBeNull="true" UpdateCheck="Never" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Bookmark" Member="Bookmarks">
+    <Type Name="Bookmark">
+      <Column Name="Id" Type="System.Int32" DbType="Int NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="Type" Type="System.Int16" DbType="SmallInt NOT NULL" CanBeNull="false" />
+      <Column Name="Url" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="Parent" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Position" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Title" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="Keywords" Type="System.String" DbType="Text NOT NULL" CanBeNull="false" UpdateCheck="Never" />
+      <Column Name="DateAdded" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="LastModified" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="Guid" Type="System.String" DbType="Text NOT NULL" CanBeNull="false" UpdateCheck="Never" />
+    </Type>
+  </Table>
+</Database>

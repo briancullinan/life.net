@@ -1,0 +1,116 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Life.Utilities;
+using SQLite;
+using log4net;
+
+namespace Firefox.Activities
+{
+    public class UpdateHistory : Activity, IDisposable
+    {
+        private static readonly ILog Log = LogManager.GetLogger(typeof (UpdateHistory));
+        private static DateTime _epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        private readonly string _profile;
+        private readonly bool _sync;
+
+        public UpdateHistory(Life.Activity activity, string profile, bool sync = false)
+            : base(activity)
+        {
+            _profile = profile;
+            _sync = sync;
+        }
+
+        public void Dispose()
+        {
+        }
+
+        private List<moz_places> GetPlaces(SQLiteConnection conn = null)
+        {
+            using (var history = new HistoryDataContext())
+            {
+                var firefoxPlaces = conn;
+                if (conn == null)
+                    firefoxPlaces = new SQLiteConnection(_profile);
+                var latest = default(DateTime?);
+                if (history.Histories.Any())
+                    latest = history.GetTable<History>().Max(x => x.LastVisit);
+
+                var time = latest.HasValue ? (long?) ((latest.Value - _epoch).Ticks/10) : 0;
+                var places = firefoxPlaces.Table<moz_places>().Where(x => x.last_visit_date > time).ToList();
+                if (conn == null)
+                    firefoxPlaces.Dispose();
+                return places;
+            }
+        }
+
+        private List<moz_places> SynchronizePlaces()
+        {
+            using (var history = new HistoryDataContext())
+            {
+                using (var firefoxPlaces = new SQLiteConnection(_profile))
+                {
+                    var places = GetPlaces(firefoxPlaces);
+                    var existing = history.GetTable<History>().Select(x => x.Id).ToList();
+                    var past = firefoxPlaces.Table<moz_places>().Select(x => x.id).ToList();
+                    var except = past.Except(existing)
+                                     .Except(places.Select(x => x.id))
+                                     .ToList();
+                    places =
+                        places.Concat(except
+                                          .Select(x => firefoxPlaces.Table<moz_places>()
+                                                                    .First(y => y.id == x))
+                                          .ToList())
+                              .ToList();
+                    return places;
+                }
+            }
+        }
+
+        public override void Execute(dynamic context)
+        {
+            lock (_profile)
+                using (var history = new HistoryDataContext())
+                {
+                    var places = _sync ? SynchronizePlaces() : GetPlaces();
+
+                    foreach (var place in places)
+                    {
+                        var visitTime = new DateTime?();
+                        if (place.last_visit_date.HasValue)
+                            visitTime = _epoch.AddSeconds(place.last_visit_date.Value/1000000.0);
+                        var newHistory = history.Histories.FirstOrDefault(x => x.Id == place.id);
+                        if (newHistory == null)
+                        {
+                            newHistory = new History
+                                {
+                                    Id = place.id,
+                                    Url = place.url,
+                                    Guid = place.guid
+                                };
+                            history.Histories.InsertOnSubmit(newHistory);
+                        }
+
+                        newHistory.Title = place.title;
+                        newHistory.Host = place.rev_host;
+                        newHistory.Visits = place.visit_count;
+                        newHistory.Hidden = place.hidden;
+                        newHistory.Typed = place.typed;
+                        newHistory.IconId = place.favicon_id;
+                        newHistory.Frecency = place.frecency;
+                        newHistory.LastVisit = visitTime;
+
+                        try
+                        {
+                            history.SubmitChanges();
+                        }
+                        catch (Exception e)
+                        {
+                            Log.Error(e);
+                        }
+                    }
+                }
+        }
+    }
+}
+

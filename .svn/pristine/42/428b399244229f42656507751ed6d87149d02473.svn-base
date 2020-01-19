@@ -1,0 +1,66 @@
+﻿using System;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Windows;
+using System.Windows.Input;
+using Life.Annotations;
+using TimelineLibrary;
+
+namespace Life.Controls
+{
+    /// <summary>
+    /// Interaction logic for Timeline.xaml
+    /// </summary>
+    public partial class Timeline
+    {
+        private static Timer _timer;
+
+        public Timeline()
+        {
+            InitializeComponent();
+            if(_timer == null)
+                _timer = new Timer(UpdateTimelineNow, null, 0, 1000);
+        }
+
+        private void UpdateTimelineNow(object state)
+        {
+            Dispatcher.BeginInvoke((Action) (() =>
+                {
+                    if (IsLoaded)
+                        CurrentDateTime = DateTime.Now;
+                }));
+        }
+
+        private void Timeline_OnMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Alt)
+            {
+                var amount = Math.Abs(e.Delta/120);
+                var zoomIn = e.Delta > 0;
+                var bands = Children.OfType<TimelineBand>().ToList();
+                if (!zoomIn && bands.IndexOf(bands.First(x => x.IsMainBand)) < bands.Count)
+                {
+                    var main = bands.SkipWhile(x => !x.IsMainBand).First();
+                    var next = bands.SkipWhile(x => !x.IsMainBand).Skip(amount).First();
+                    main.IsMainBand = false;
+                    next.IsMainBand = true;
+                    foreach (var hide in bands.TakeWhile(x => !x.IsMainBand))
+                        hide.Visibility = Visibility.Collapsed;
+                    var mainRow = RowDefinitions.SkipWhile(x => x.Height != new GridLength(1, GridUnitType.Star)).First();
+                    var nextRow =
+                        RowDefinitions.SkipWhile(x => x.Height != new GridLength(1, GridUnitType.Star))
+                                      .Skip(amount)
+                                      .First();
+                    mainRow.Height = new GridLength(0);
+                    nextRow.Height = new GridLength(1, GridUnitType.Star);
+                    foreach (var hide in RowDefinitions.TakeWhile(x => x.Height != new GridLength(1, GridUnitType.Star)))
+                        hide.Height = new GridLength(0);
+                }
+            }
+        }
+    }
+}

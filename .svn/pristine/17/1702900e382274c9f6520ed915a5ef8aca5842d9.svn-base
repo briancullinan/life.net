@@ -1,0 +1,64 @@
+﻿using System;
+using System.Windows;
+using System.Windows.Threading;
+using TimelineLibrary;
+
+namespace Life.Activities
+{
+    public class UpdateTimeline : Utilities.Activity
+    {
+        public string DateProperty
+        {
+            get { return GetValue<string>(); }
+            set { SetValue(value); }
+        }
+
+        public string TitleProperty
+        {
+            get { return GetValue<string>(); }
+            set { SetValue(value); }
+        }
+
+        public string DescriptionProperty
+        {
+            get { return GetValue<string>(); }
+            set { SetValue(value); }
+        }
+
+        private readonly string _dateProperty;
+        private readonly string _titleProperty;
+        private readonly string _descProperty;
+
+        public UpdateTimeline(Activity activity, 
+            string dateProperty = "",
+            string titleProperty = "",
+            string descriptionProperty = "") : base(activity)
+        {
+            _dateProperty = dateProperty;
+            _titleProperty = titleProperty;
+            _descProperty = descriptionProperty;
+        }
+
+        public override void Execute(object context, Utilities.Trigger trigger)
+        {
+            if (!Application.Current.Dispatcher.CheckAccess())
+            {
+                Application.Current.Dispatcher.BeginInvoke((Action<dynamic>) (context1 => Execute(context1, trigger)),
+                                                           DispatcherPriority.Input, context);
+                return;
+            }
+
+            var element = context as FrameworkElement;
+            if (element != null)
+            {
+                
+            }
+
+            ((MainWindow)Application.Current.MainWindow).Items.Add(new TimelineEvent
+                {
+                    Description = context.ToString(),
+                    StartDate = DateTime.Now
+                });
+        }
+    }
+}

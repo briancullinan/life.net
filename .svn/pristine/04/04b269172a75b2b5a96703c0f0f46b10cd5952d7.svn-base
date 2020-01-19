@@ -1,0 +1,55 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Threading;
+using AvalonDock.Layout;
+using Life.Controls;
+using TimelineLibrary;
+
+namespace Life.Triggers
+{
+    public class Searched : Utilities.Trigger
+    {
+        public Searched(Trigger trigger) : base(trigger)
+        {
+            ((MainWindow) System.Windows.Application.Current.MainWindow).Search.Click += SearchOnClick;
+        }
+
+        private void ActivityOnResulted(Timeline timeline, Utilities.Activity activity, object result)
+        {
+            timeline.Dispatcher.BeginInvoke((Action) (() =>
+                {
+                    var newEvent = result as TimelineEvent;
+                    if (newEvent != null)
+                        timeline.TimelineEvents.Add(newEvent);
+                    else
+                        throw new NotSupportedException();
+                    timeline.RefreshEvents(true);
+                }), DispatcherPriority.ApplicationIdle);
+        }
+
+        private void SearchOnClick(object sender, RoutedEventArgs routedEventArgs)
+        {
+            var main = ((MainWindow) System.Windows.Application.Current.MainWindow);
+            var text = main.SearchText.Text;
+            var timeline = new Timeline();
+            var results = new LayoutDocument
+                {
+                    Title = string.Format("Search results for: {0}", text),
+                    Content = timeline
+                };
+            main.Documents.Children.Add(results);
+            main.Documents.SelectedContentIndex = main.Documents.IndexOf(results);
+            OnTriggered(text);
+            foreach (var activityTrigger in Entity.ActivityTriggers)
+            {
+                Utilities.Activity activity;
+                if ((activity = App.Activities.FirstOrDefault(x => x.Entity.Id == activityTrigger.ActivityId)) != null)
+                    activity.Resulted += (act, result) => ActivityOnResulted(timeline, act, result);
+            }
+        }
+    }
+}
